@@ -137,6 +137,7 @@ class TreeAgent(CaptureAgent):
     self.moves = []
     self.intendedCoords =[]
     self.best = None
+
   def evaluate(self, gameState, state, directions):
         fg = self.getFood(gameState).asList()
         #print "Passed in Directions: ", directions
@@ -171,20 +172,28 @@ class TreeAgent(CaptureAgent):
                 count -= 1
                 unvisited.pop(dot)
 
+        '''
+        if count <= 5:
+            score = [self.getMazeDistance(state[0], dot) for dot in unvisited]
+            homeDist = min ([self.getMazeDistance(state[0], space) for space in self.safeSpaces ])
+            score = - (min(score) + homeDist) - count * 50 - 3 * len(myPositions)
+            return score
+        '''
+
         if count <= 2:
             homeDist = min ([self.getMazeDistance(state[0], space) for space in self.safeSpaces ])
             homeDist2 = min ([self.getMazeDistance(state[1], space) for space in self.safeSpaces ])
-            score = - (homeDist + homeDist2)
+            score = - (homeDist + homeDist2) - 2 * len(myPositions)
             return score
 
         score = [self.getMazeDistance(state[0], dot) for dot in unvisited]
         score2 = [self.getMazeDistance(state[1], dot) for dot in unvisited]
-        print "Distances:", score
+        #print "Distances:", score
         #res = map(lambda x: count * x, score)
-        print "count", count
+        print "Food Left", count
         #return -min(res)
-        res = - (min(score2) + min(score) + max(score2) + max(score)) - count * 10 - 2 * len(myPositions)
-
+        res = - (min(score2) + min(score)) - count * 100 - 3 * len(myPositions)
+        #res = - (min(score)) - count * 100 - 3 * len(myPositions)
         return res
         #return - (count + len(myPositions) + len(hisPositions) )
         #return len(unvisited)
@@ -227,7 +236,7 @@ class TreeAgent(CaptureAgent):
 
 
   def ActionLoop(self, gameState):
-    maxDepth = 100
+    maxDepth = 250
     start = time.time()
     levelDic = {}
     closed = {}
@@ -242,10 +251,15 @@ class TreeAgent(CaptureAgent):
         popped += 1
         if node.getState() not in closed:  #could do just the position? // 10,10 -> 11,10 -> 11,11 <- 10,11 <-  10,10  want to prune more
             if node.depth in levelDic: #have we explored this depth already?
-                if node.getScore() < levelDic[node.depth].getScore():
-                    continue
+              if node.getScore() < levelDic[node.depth].getScore() - 2:
+                print "considered pruning here"
+                continue
 
-            levelDic.update({node.depth: node })
+              elif node.getScore() > levelDic[node.depth].getScore():
+                levelDic.update({node.depth: node })
+
+            else:
+                levelDic.update({node.depth: node })
             closed.update({node.getState(): True})
             if node.depth == maxDepth:
                 continue
@@ -258,13 +272,22 @@ class TreeAgent(CaptureAgent):
     print 'Expanded Nodes: ', expanded
     print 'Popped Nodes from Fringe: ', popped
     try:
-        bestDeepNode = levelDic[maxDepth]
+        #bestDeepNode = levelDic[maxDepth]
+        nodes = levelDic.values()
+        bestNodes = sorted(nodes, key = lambda node: node.getScore())
+        best = bestNodes[-1]
+        if not best.parent:
+            try:
+                bestDeepNode = bestNodes[-2]
+            except:
+                print "Root is max"
+                return None
     except:
         print "Bad Optimization"
         bestDeepNode = levelDic[max(levelDic.keys())]
 
 
-    print 'Final Destination at ',  bestDeepNode.getState(), "with score",  bestDeepNode.getScore()
+    print 'Final Destination at ',  bestDeepNode.getState(), "of depth", bestDeepNode.depth, "with score",  bestDeepNode.getScore()
     print 'Optimal moves found to be: ',  bestDeepNode.getDir()
     coords = []
     hisCoords = []
@@ -345,12 +368,12 @@ class Node:
         if self.firstActor:
             #note that get successors returns ((5,4) 'South', 1) --> direction encoded
             childStates = getSuccessorsAlt(self.gameState, self.state[0][0])
-            print "Possible child states for",  self.state[0][0], "are:", childStates
+            #print "Possible child states for",  self.state[0][0], "are:", childStates
             childNodes = [ Node((el[0],self.state[0][1]), el[1], self, self.evalFn, self.gameState) for el in childStates]
             self.children = childNodes
         else:
             childStates = getSuccessorsAlt(self.gameState, self.state[0][1])
-            print "Possible child states for",  self.state[0][1], "are:", childStates
+            #print "Possible child states for",  self.state[0][1], "are:", childStates
             childNodes = [ Node((self.state[0][0], el[0]), el[1], self, self.evalFn, self.gameState) for el in childStates]
             self.children = childNodes
 
