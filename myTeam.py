@@ -170,7 +170,7 @@ class ReflexCaptureAgent(CaptureAgent):
             print "Food is in Bottom Quadrant at ", el
             if not self.top:
                 self.myFood += [el]
-        elif self.quandrantTop.contains(el) and not self.top:
+        elif self.quandrantTop.contains(el):
             print "Food is in Top Quadrant at ", el
             if self.top:
                  self.myFood += [el]
