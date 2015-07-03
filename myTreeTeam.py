@@ -214,13 +214,13 @@ class TreeAgent(CaptureAgent):
         self.counter = 30
     try:
         move = self.moves[30 - self.counter]
+        self.counter -= 1
     except:
-        print "Tried to access index", min(30 - self.counter), "in list of length", len(self.moves)
+        print "Tried to access index", 30 - self.counter, "in list of length", len(self.moves), "more moves now generated"
         actions = gameState.getLegalActions(self.index)
-        self.counter == 0
+        self.counter = 0
         return random.choice(actions)
     print "On move ", 30 - self.counter, "as player", self.index, "going", move, "from", gameState.getAgentPosition(self.index)
-    self.counter -= 1
     return move
 
 
