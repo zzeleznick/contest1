@@ -1,0 +1,47 @@
+alleyCapture:
+red: top-left corner; blue: bottom-right corner
+food: lr
+
+bloxCapture:
+red: top-left and bottom-left; blue: top-right and bottom-right
+food: lr
+
+crowdedCapture:
+red: top agent (3) has access to food, bottom (1) is blocked
+blue: bottom agent (4) has access to food, top (2) is blocked
+food: lr
+** T R I C K Y  **
+
+defaultCapture:
+red: bottom-left corner; blue: top-right corner
+food: lr
+
+distantCapture:
+red: bottom-left corner; blue: top-right corner
+food: lr
+**essentially default with longer maze to exit home**
+
+fastCapture:
+red: bottom-left corner; blue: top-right corner
+food: lr
+**essentially default with less dots; smaller height**
+
+jumboCapture:
+red: top-left and bottom-left; blue: top-right and bottom-right
+food is right (lr) orientation
+
+mediumCapture:
+red: bottom middle-left (1 above 3); blue: bottom middle-right (2 above 4)
+food: lr
+
+officeCapture:
+red: middle-left (3 top, 1 bottom); blue: middle-right (2 top, 4 bottom)
+food: lr
+** T R I C K Y  **
+
+strategicCapture:
+red: left, blue: right
+food: lr
+
+tinyCapture:
+error
