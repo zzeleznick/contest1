@@ -119,12 +119,14 @@ if __name__ == '__main__':
     levelDic = {}
     closed = {}
     expanded = 0
+    popped = 0
     fringe = util.PriorityQueue()
     root = Node(((10,10), 0), evalFn = evaluateMultWithTime)
 
     fringe.push(root, -root.getScore())  #least to greatest (use negative scores)
     while len(fringe.heap) != 0:
         node = fringe.pop()
+        popped += 1
         if node.getState() not in closed:  #could do just the position? // 10,10 -> 11,10 -> 11,11 <- 10,11 <-  10,10  want to prune more
             if node.depth in levelDic: #have we explored this depth already?
                 if node.getScore() < levelDic[node.depth].getScore():
@@ -141,6 +143,7 @@ if __name__ == '__main__':
 
     print '\neval time for pruned tree is: %.4f' % (time.time() - start2)
     print 'Expanded Nodes: ', expanded
+    print 'Popped Nodes from Fringe: ', popped
     print 'Final Destination at ', levelDic[maxDepth].getState()
 
 
