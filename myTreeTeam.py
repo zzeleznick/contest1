@@ -133,9 +133,10 @@ class TreeAgent(CaptureAgent):
 
     ##self.getPosition = gameState.getAgentState(self.index).getPosition
     ##self.getFriendPosition = gameState.getAgentState(self.friend).getPosition
-    self.gs = gameState
-
-
+    self.counter = 0
+    self.moves = []
+    self.intendedCoords =[]
+    self.best = None
   def evaluate(self, gameState, state, directions):
         fg = self.getFood(gameState).asList()
         #print "Passed in Directions: ", directions
@@ -144,34 +145,49 @@ class TreeAgent(CaptureAgent):
 
         unvisited = {}
         x,y =  gameState.getAgentState(self.index).getPosition() # self.getPosition() NONONONO This doesn't update auto
-        myPositions = [ (x,y)]
+        myPositions = { (x,y): True }
         #print "Started at", (x, y)
         for action in directions[0]:
             dx, dy = Actions.directionToVector(action)
             x, y = int(x + dx), int(y + dy)
-            myPositions += [(x,y)]
+            myPositions.update({ (x,y) : True })
 
         x, y = gameState.getAgentState(self.friend).getPosition()
-        hisPositions = [ (x,y)]
+        hisPositions = { (x,y): True }
         #print "Started at", (x, y)
         for action in directions[1]:
             dx, dy = Actions.directionToVector(action)
             x, y = int(x + dx), int(y + dy)
-            hisPositions += [(x,y)]
+            hisPositions.update({ (x,y) : True })
 
         for el in fg:
             unvisited.update({el: False})
 
-        positions = myPositions + hisPositions
-        for visit in positions:
-            if visit in unvisited:
-                #print "Visited ", visit
-                unvisited.pop(visit)
+        count = len(fg)
+        #print "len of fg", count
+        for dot in fg:
+            if dot in myPositions or dot in hisPositions:
+                print "Visited ", dot
+                count -= 1
+                unvisited.pop(dot)
 
+        if count <= 2:
+            homeDist = min ([self.getMazeDistance(state[0], space) for space in self.safeSpaces ])
+            homeDist2 = min ([self.getMazeDistance(state[1], space) for space in self.safeSpaces ])
+            score = - (homeDist + homeDist2)
+            return score
 
-        score = sum( [self.getMazeDistance(state[0], dot) for dot in fg])
+        score = [self.getMazeDistance(state[0], dot) for dot in unvisited]
+        score2 = [self.getMazeDistance(state[1], dot) for dot in unvisited]
+        print "Distances:", score
+        #res = map(lambda x: count * x, score)
+        print "count", count
+        #return -min(res)
+        res = - (min(score2) + min(score) + max(score2) + max(score)) - count * 10 - 2 * len(myPositions)
 
-        return -score
+        return res
+        #return - (count + len(myPositions) + len(hisPositions) )
+        #return len(unvisited)
 
   def chooseAction(self, gameState):
     """
@@ -185,8 +201,33 @@ class TreeAgent(CaptureAgent):
     # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
 
     #return random.choice(actions)
+    if self.counter == 0:
+        print "Calculating 30 moves ", "as player", self.index, "from ", gameState.getAgentPosition(self.index)
+        print "Cached value"
+        self.best =  self.ActionLoop(gameState)
+        self.moves =  self.best.getDir()[1]
+        if not self.moves or len(self.moves) == 0:
+            print "Tried to play move, but ran Out of Moves!!!"
+            actions = gameState.getLegalActions(self.index)
+            return random.choice(actions)
+        self.intendedCoords =  self.best.state[0]
+        self.counter = 30
+    try:
+        move = self.moves[30 - self.counter]
+    except:
+        print "Tried to access index", min(30 - self.counter), "in list of length", len(self.moves)
+        actions = gameState.getLegalActions(self.index)
+        self.counter == 0
+        return random.choice(actions)
+    print "On move ", 30 - self.counter, "as player", self.index, "going", move, "from", gameState.getAgentPosition(self.index)
+    self.counter -= 1
+    return move
 
-    maxDepth = 30
+
+
+
+  def ActionLoop(self, gameState):
+    maxDepth = 100
     start = time.time()
     levelDic = {}
     closed = {}
@@ -216,16 +257,35 @@ class TreeAgent(CaptureAgent):
     print '\neval time for pruned tree is: %.4f' % (time.time() - start)
     print 'Expanded Nodes: ', expanded
     print 'Popped Nodes from Fringe: ', popped
-    print 'Final Destination at ', levelDic[maxDepth].getState(), "with score", levelDic[maxDepth].getScore()
-    print 'Optimal moves found to be: ', levelDic[maxDepth].getDir()
+    try:
+        bestDeepNode = levelDic[maxDepth]
+    except:
+        print "Bad Optimization"
+        bestDeepNode = levelDic[max(levelDic.keys())]
 
-    bestDeepNode = levelDic[maxDepth]
-    firstMove = bestDeepNode.getDir()[0][0]
+
+    print 'Final Destination at ',  bestDeepNode.getState(), "with score",  bestDeepNode.getScore()
+    print 'Optimal moves found to be: ',  bestDeepNode.getDir()
+    coords = []
+    hisCoords = []
+    end =  bestDeepNode
+    mine = 0
+    while end:
+        #print "Coords in Reverse"
+         if mine % 2 == 0:
+            coords =[end.state[0][0]] +  coords
+         else:
+             hisCoords =[end.state[0][1]] +  hisCoords
+         mine += 1
+         end = end.parent
+
+    print "Coords Traveled as", self.index, coords
+    print "Friend coords Traveled", hisCoords
+
+    firstMove = bestDeepNode.getDir()[1][0]
     print "Going ", firstMove, "towards ", bestDeepNode.getState()
-    return firstMove
-
-
-
+    #return firstMove
+    return bestDeepNode
 
 
 class Node:
@@ -243,7 +303,7 @@ class Node:
 
         if self.parent:
             self.depth = parent.depth + 1
-            self.firstActor = self.depth % 2 != 0
+            self.firstActor = self.depth % 2 == 0
             self.parentState = parent.state
             if parent.directions:
                 self.directions = copy.deepcopy(parent.directions)
@@ -252,7 +312,7 @@ class Node:
                 else:
                     self.directions[1] +=  [ directions ]
             else:
-                self.directions = [ [directions], [] ]
+                self.directions = [ [] , [directions] ]
         else:
             self.depth = 0
             self.firstActor = True
@@ -285,10 +345,12 @@ class Node:
         if self.firstActor:
             #note that get successors returns ((5,4) 'South', 1) --> direction encoded
             childStates = getSuccessorsAlt(self.gameState, self.state[0][0])
+            print "Possible child states for",  self.state[0][0], "are:", childStates
             childNodes = [ Node((el[0],self.state[0][1]), el[1], self, self.evalFn, self.gameState) for el in childStates]
             self.children = childNodes
         else:
             childStates = getSuccessorsAlt(self.gameState, self.state[0][1])
+            print "Possible child states for",  self.state[0][1], "are:", childStates
             childNodes = [ Node((self.state[0][0], el[0]), el[1], self, self.evalFn, self.gameState) for el in childStates]
             self.children = childNodes
 
@@ -314,7 +376,7 @@ def agentsAtGoalState(agent, gameState, positions, fg = None):
             unvisited.pop(visit)
 
 
-    myPos = gameState.getAgentState(agent.index).getPosition()
+    myPos = gameState.getAgentState(agent.index).oition()
     friendPos = gameState.getAgentState(agent.friend).getPosition()
 
     if agent.red:
