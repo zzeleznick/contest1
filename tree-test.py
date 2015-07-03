@@ -5,15 +5,20 @@ Experimenting with returning the max value of a tree search
 Will eventually convert to mini-max, and then test pruning
 '''
 import time
-def multCost(pos):
+import util
+def evaluateMult(pos):
         return pos[0] * pos[1]
+
+def evaluateMultWithTime(state): #( (10, 10), 2 )
+        return state[0][0] * state[0][1] - state[1]
+
 
 def successorCoords(pos):
       return [(pos[0] - 1, pos[1]),(pos[0] + 1, pos[1]), (pos[0], pos[1] - 1), (pos[0], pos[1] + 1) ]
 
 
 class Node:
-    def __init__(self, state = (0,0), parentState = None, depth = 0, parent = None, costFn = multCost ):
+    def __init__(self, state = (0,0), parentState = None, depth = 0, parent = None, evalFn = evaluateMult ):
         """
         :param states: an array containing objects of state
         :param directions: an array containing North, East, South, West, or Stop directions
@@ -24,8 +29,8 @@ class Node:
         self.parentState = parentState # Todo Remove
         self.directions = None #directions Todo Fix
 
-        self.costFn = costFn
-        self.cost = self.costFn(state)
+        self.evalFn = evalFn
+        self.score = self.evalFn(state)
 
         self.parent = parent
         self.depth = depth
@@ -37,8 +42,8 @@ class Node:
     def getDir(self):
         return self.directions
 
-    def getCost(self):
-        return self.cost
+    def getScore(self):
+        return self.score
 
     def setState(self, state):
         self.state = state
@@ -46,10 +51,15 @@ class Node:
     def addDir(self, direction):
         self.directions += [direction]
 
-    def addChildren(self):
-        childStates = successorCoords(self.state)
-        childNodes = [ Node(el, self.state, self.depth + 1, self) for el in childStates]
-        self.children = childNodes
+    def addChildren(self, evalFn = evaluateMult):
+        if self.state[0].__class__ == tuple:
+            childStates = successorCoords(self.state[0])
+            childNodes = [ Node((el,self.state[1] + 1 ), self.state, self.depth + 1, self, evalFn) for el in childStates]  #still storing parent states idk why I am
+            self.children = childNodes
+        else:
+            childStates = successorCoords(self.state)
+            childNodes = [ Node(el, self.state, self.depth + 1, self) for el in childStates]
+            self.children = childNodes
 
     def getChildren(self):
         if self.children:
@@ -59,41 +69,8 @@ class Node:
         if self.getChildren():
             return [child.getState() for child in self.getChildren()]
 
-    '''
-    def addNodeImmutable(self, state, dir, costfn = sillyCost ):
-        s = self.states[:]
-        d = self.directions[:]
-        c = self.cost
-        output = Node(s,d, c)
-        #for lists if you reference one list to a second, the second is a pointer, not a copy, use slice for lists
-        #dir = getCorrespondingMove(self.getLastState(), state)
-        output.addState(state)
-        output.addDir(dir)
-        output.cost = costfn(output.getDir())
-        return output
-    '''
-
 def sillyCost():
         return 0
-class Queue:
-    "A container with a first-in-first-out (FIFO) queuing policy."
-    def __init__(self):
-        self.list = []
-
-    def push(self,item):
-        "Enqueue the 'item' into the queue"
-        self.list.insert(0,item)
-
-    def pop(self):
-        """
-          Dequeue the earliest enqueued item still in the queue. This
-          operation removes the item from the queue.
-        """
-        return self.list.pop()
-
-    def isEmpty(self):
-        "Returns true if the queue is empty"
-        return len(self.list) == 0
 
 
 
@@ -101,7 +78,7 @@ def bfsMax(origin, maxDepth = 3):
     parent = Node(origin)
     #closed = []
     closed = {}
-    fringe = Queue()
+    fringe = util.Queue()
     fringe.push(parent)
     bestDest = None
     best = 0
@@ -112,7 +89,7 @@ def bfsMax(origin, maxDepth = 3):
            return bestDest, best, expanded
         node = fringe.pop()
         if node.depth == maxDepth: #problem.isGoalState(node.getLastState()):
-            tmp = node.getCost()
+            tmp = node.getScore()
             if tmp > best:
                 best = tmp
                 bestDest = node
@@ -120,7 +97,7 @@ def bfsMax(origin, maxDepth = 3):
             #return node
         if node not in closed:
             #closed += [ node ]
-            closed.update({node: node.getCost()})
+            closed.update({node: node.getScore()})
             node.addChildren()
             expanded += 4
             for child in node.getChildren():
@@ -132,22 +109,41 @@ def bfsMax(origin, maxDepth = 3):
 if __name__ == '__main__':
     parent = Node((10,10))
     count = 0
-    '''
-    created = [ parent ]
-    expanded = []
-    while count < 3:
-        for node in created:
-            if node.getState() not in expanded:
-               node.addChildren()
-               count = node.depth + 1
-               created += node.getChildren()
-               #print "Created list as: ", [child.getState() for child in created]
-               expanded.append(node)
-    '''
     start = time.time()
     dest, val, expanded = bfsMax((10,10), 6)
     print "destination at", dest.getState(), "dist:", val, " with ", expanded, "nodes expanded."
     print 'eval time for bfs: %.4f' % (time.time() - start)
+
+    maxDepth = 100
+    start2 = time.time()
+    levelDic = {}
+    closed = {}
+    expanded = 0
+    fringe = util.PriorityQueue()
+    root = Node(((10,10), 0), evalFn = evaluateMultWithTime)
+
+    fringe.push(root, -root.getScore())  #least to greatest (use negative scores)
+    while len(fringe.heap) != 0:
+        node = fringe.pop()
+        if node.getState() not in closed:  #could do just the position? // 10,10 -> 11,10 -> 11,11 <- 10,11 <-  10,10  want to prune more
+            if node.depth in levelDic: #have we explored this depth already?
+                if node.getScore() < levelDic[node.depth].getScore():
+                    continue
+
+            levelDic.update({node.depth: node })
+            closed.update({node.getState(): True})
+            if node.depth == maxDepth:
+                continue
+            node.addChildren(evalFn = evaluateMultWithTime)
+            expanded += 4
+            for child in node.getChildren():
+                fringe.push(child, -child.getScore())
+
+    print '\neval time for pruned tree is: %.4f' % (time.time() - start2)
+    print 'Expanded Nodes: ', expanded
+    print 'Final Destination at ', levelDic[maxDepth].getState()
+
+
 
     #depth of 6 -> 2.8 seconds, 5460 nodes
     #depth of 6 -> .11 with dictionary
