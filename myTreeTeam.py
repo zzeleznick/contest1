@@ -211,32 +211,66 @@ class TreeAgent(CaptureAgent):
 
     #return random.choice(actions)
     if self.counter == 0:
-        print "Calculating 80 moves ", "as player", self.index, "from ", gameState.getAgentPosition(self.index)
+        print "Calculating 60 moves ", "as player", self.index, "from ", gameState.getAgentPosition(self.index)
         print "Cached value"
         self.best =  self.ActionLoop(gameState)
         self.moves =  self.best.getDir()[1]
+        if len(self.getFood(gameState).asList()) <= 2:
+            print "plan terminated with", len(self.getFood(gameState).asList()), "dots left"
+
+            pos = gameState.getAgentState(self.index).getPosition()
+            localbestDist = 9999
+            dest = self.start
+            bestDest = dest
+            dist = self.getMazeDistance(dest,pos)
+
+            for el in xrange(-2,4):
+              try:
+                idx = self.safeSpaces.index((self.safeColumn, pos[1] + el))
+                dest = self.safeSpaces[idx]
+                dist = self.getMazeDistance(dest,pos)
+                #print "possible destination at", dest
+              except ValueError:
+                print "X: ", (self.safeColumn, pos[1] + el), "not valid destination"
+              print "Current destination to check at ", dest, "at dist:", dist
+              if dist < localbestDist:
+                localbestDist = dist
+                bestDest = dest
+
+            bestDist = 9999
+            for pos2, action, cost in getSuccessorsAlt(gameState, pos):
+                dist = self.getMazeDistance(bestDest,pos2)
+                if dist < bestDist:
+                  bestAction = action
+                  bestDist = dist
+
+            print "Found optimal safe space at", bestDest , "with dist", bestDist, "coloring spot now"
+            print "Agent ", self.index, "Going", bestAction, "\n"
+            self.debugDraw([bestDest], [1,1,0], clear=False)
+            return bestAction
+
         if not self.moves or len(self.moves) == 0:
             print "Tried to play move, but ran Out of Moves!!!"
             actions = gameState.getLegalActions(self.index)
             return random.choice(actions)
         self.intendedCoords =  self.best.state[0]
-        self.counter = 80
+        self.counter = 60
     try:
-        move = self.moves[80 - self.counter]
+        move = self.moves[60 - self.counter]
         self.counter -= 1
     except:
-        print "Tried to access index", 80 - self.counter, "in list of length", len(self.moves), "more moves now generated"
+        print "Tried to access index", 60 - self.counter, "in list of length", len(self.moves), "more moves now generated"
         actions = gameState.getLegalActions(self.index)
         self.counter = 0
         return random.choice(actions)
-    print "On move ", 80 - self.counter, "as player", self.index, "going", move, "from", gameState.getAgentPosition(self.index)
+    print "On move ", 60 - self.counter, "as player", self.index, "going", move, "from", gameState.getAgentPosition(self.index)
     return move
 
 
 
 
   def ActionLoop(self, gameState):
-    maxDepth = 70
+    maxDepth = 100
     start = time.time()
     levelDic = {}
     closed = {}
