@@ -275,6 +275,7 @@ class ReflexCaptureAgent(CaptureAgent):
     """
     while self.moves:
         if self.getFood(gameState).asList() <=2:
+            moves = None
             break
         move = self.moves[0]
         self.moves = self.moves[1:]

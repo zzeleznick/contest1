@@ -168,7 +168,7 @@ class TreeAgent(CaptureAgent):
         #print "len of fg", count
         for dot in fg:
             if dot in myPositions or dot in hisPositions:
-                print "Visited ", dot
+                #print "Visited ", dot
                 count -= 1
                 unvisited.pop(dot)
 
@@ -190,9 +190,9 @@ class TreeAgent(CaptureAgent):
         score2 = [self.getMazeDistance(state[1], dot) for dot in unvisited]
         #print "Distances:", score
         #res = map(lambda x: count * x, score)
-        print "Food Left", count
+        #print "Food Left", count
         #return -min(res)
-        res = - (min(score2) + min(score)) - count * 100 - 3 * len(myPositions)
+        res = - (min(score2) + min(score)) - count * 100 -  2* len(myPositions)
         #res = - (min(score)) - count * 100 - 3 * len(myPositions)
         return res
         #return - (count + len(myPositions) + len(hisPositions) )
@@ -211,7 +211,7 @@ class TreeAgent(CaptureAgent):
 
     #return random.choice(actions)
     if self.counter == 0:
-        print "Calculating 30 moves ", "as player", self.index, "from ", gameState.getAgentPosition(self.index)
+        print "Calculating 80 moves ", "as player", self.index, "from ", gameState.getAgentPosition(self.index)
         print "Cached value"
         self.best =  self.ActionLoop(gameState)
         self.moves =  self.best.getDir()[1]
@@ -220,28 +220,31 @@ class TreeAgent(CaptureAgent):
             actions = gameState.getLegalActions(self.index)
             return random.choice(actions)
         self.intendedCoords =  self.best.state[0]
-        self.counter = 30
+        self.counter = 80
     try:
-        move = self.moves[30 - self.counter]
+        move = self.moves[80 - self.counter]
         self.counter -= 1
     except:
-        print "Tried to access index", 30 - self.counter, "in list of length", len(self.moves), "more moves now generated"
+        print "Tried to access index", 80 - self.counter, "in list of length", len(self.moves), "more moves now generated"
         actions = gameState.getLegalActions(self.index)
         self.counter = 0
         return random.choice(actions)
-    print "On move ", 30 - self.counter, "as player", self.index, "going", move, "from", gameState.getAgentPosition(self.index)
+    print "On move ", 80 - self.counter, "as player", self.index, "going", move, "from", gameState.getAgentPosition(self.index)
     return move
 
 
 
 
   def ActionLoop(self, gameState):
-    maxDepth = 250
+    maxDepth = 70
     start = time.time()
     levelDic = {}
     closed = {}
     expanded = 0
     popped = 0
+    reborn = 0
+    zobmies = 0
+    killedZombies = 0
     fringe = util.PriorityQueue()
     root = Node((gameState.getAgentState(self.index).getPosition(), gameState.getAgentState(self.friend).getPosition()), evalFn = self.evaluate, gameState = gameState)
 
@@ -250,20 +253,27 @@ class TreeAgent(CaptureAgent):
         node = fringe.pop()
         popped += 1
         if node.getState() not in closed:  #could do just the position? // 10,10 -> 11,10 -> 11,11 <- 10,11 <-  10,10  want to prune more
-            if node.depth in levelDic: #have we explored this depth already?
-              if node.getScore() < levelDic[node.depth].getScore() - 2:
-                print "considered pruning here"
-                continue
-
-              elif node.getScore() > levelDic[node.depth].getScore():
+            if node.depth not in levelDic:
                 levelDic.update({node.depth: node })
+            elif node.depth in levelDic: #have we explored this depth already?
+              if node.getScore() > levelDic[node.depth].getScore():
+                  levelDic.update({node.depth: node })
+                  if node.doomed:
+                      node.doomed = False  #reborn!!!
+                      reborn +=1
+                      node.lives = root.lives
+              else:
+                #print "considered pruning here"
+                node.doomed = True
+                zobmies +=1
+                if node.lives == 0:
+                    killedZombies +=1
+                    continue
 
-            else:
-                levelDic.update({node.depth: node })
             closed.update({node.getState(): True})
             if node.depth == maxDepth:
                 continue
-            node.addChildren()
+            node.addDoomedChildren(node.doomed)
             expanded += 4
             for child in node.getChildren():
                 fringe.push(child, -child.getScore())
@@ -271,6 +281,8 @@ class TreeAgent(CaptureAgent):
     print '\neval time for pruned tree is: %.4f' % (time.time() - start)
     print 'Expanded Nodes: ', expanded
     print 'Popped Nodes from Fringe: ', popped
+    print 'Allowed zombies to roam:' , zobmies
+    print ' | Reborn:' , reborn, " | Killed:", killedZombies, " |", "Lives: ", root.lives, '|'
     try:
         #bestDeepNode = levelDic[maxDepth]
         nodes = levelDic.values()
@@ -343,6 +355,9 @@ class Node:
             self.directions =  directions
 
 
+        self.doomed = False
+        self.lives = 7
+
         self.evalFn = evalFn
         self.score = self.evalFn(gameState, state, self.directions)
         self.state = (self.state, self.score) # ( ( (10,0), (11,0) ), score )
@@ -376,6 +391,29 @@ class Node:
             #print "Possible child states for",  self.state[0][1], "are:", childStates
             childNodes = [ Node((self.state[0][0], el[0]), el[1], self, self.evalFn, self.gameState) for el in childStates]
             self.children = childNodes
+
+    def addDoomedChildren(self, doomed = False):
+        if self.firstActor:
+            #note that get successors returns ((5,4) 'South', 1) --> direction encoded
+            childStates = getSuccessorsAlt(self.gameState, self.state[0][0])
+            #print "Possible child states for",  self.state[0][0], "are:", childStates
+            childNodes = [ Node((el[0],self.state[0][1]), el[1], self, self.evalFn, self.gameState) for el in childStates]
+            if doomed:
+                for node in childNodes:
+                    node.lives = node.parent.lives - 1
+            self.children = childNodes
+        else:
+            childStates = getSuccessorsAlt(self.gameState, self.state[0][1])
+            #print "Possible child states for",  self.state[0][1], "are:", childStates
+            childNodes = [ Node((self.state[0][0], el[0]), el[1], self, self.evalFn, self.gameState) for el in childStates]
+            for node in childNodes:
+                node.lives= node.parent.lives - 1
+            if doomed:
+                for node in childNodes:
+                    node.lives= node.parent.lives - 1
+            self.children = childNodes
+
+
 
     def getChildren(self):
         if self.children:
