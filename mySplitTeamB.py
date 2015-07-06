@@ -169,6 +169,8 @@ class ReflexCaptureAgent(CaptureAgent):
     "I N I T I A L  F O O D  A S S I G N M E N T S "
     self.myFood = sorted(self.myFood, key= lambda dot: self.getMazeDistance(self.start, dot))
     self.firstDot = self.myFood[0]
+    self.nextDot = None
+    self.closestDot = self.firstDot
     #print "Agent", self.index, "First Dot is", self.firstDot
     self.myFoodInitialSize = len(self.myFood)
 
@@ -195,8 +197,8 @@ class ReflexCaptureAgent(CaptureAgent):
     ## Check to see if we entered a cave
     pos = gameState.getAgentState(self.index).getPosition()
     x,y = pos
-    '''
     self.inCave = True
+    '''
     for i in xrange(-2,3):
         if x+i <= 0 or x+i >= gameState.data.layout.width:
             continue
@@ -314,28 +316,34 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     foodList = self.getFood(successor).asList()
     features['successorScore'] = -len(foodList)
     myFood = foodList
+    myPos = successor.getAgentState(self.index).getPosition()
+    friendPos = gameState.getAgentState(self.friend).getPosition()
+
     if self.firstDot in foodList: #if he hasn't eaten his assigned first dot
         myFood = self.firstDot
-
+    elif self.nextDot in foodList:
+        #has my friend left the area, and should I eat it now?
+        if self.getMazeDistance(self.closestDot, myPos) <  self.getMazeDistance(self.closestDot, friendPos):
+                #or self.getMazeDistance(self.nextDot, myPos) > self.getMazeDistance(self.nextDot, friendPos):
+            myFood = self.closestDot #REBIND to closer dot
+        else:
+             myFood = self.nextDot
 
     if len(foodList) > 0: # This should always be True,  but better safe than sorry
-      myPos = successor.getAgentState(self.index).getPosition()
       if myFood.__class__ == tuple:
           features['distanceToFood'] = self.getMazeDistance(myFood, myPos)
       else:
           distances = [ (self.getMazeDistance(myPos, food), food) for food in myFood]
           distances.sort()
           minDistance =  distances[0][0]
-
-          myNextDot = distances[0][1]
-          friendPos = gameState.getAgentState(self.friend).getPosition()
-          radius = self.getMazeDistance(myNextDot, myPos)
+          self.closestDot = distances[0][1]
+          radius = self.getMazeDistance(self.closestDot, myPos)
           if self.firstDot not in foodList and self.getMazeDistance(myPos, friendPos) <= 2 * radius:
               # compute which dot the friend is going after
              # print 'Agent', self.index, "friend within radius of", radius
               n = 0
               friendDist = []
-              while n < len(distances) and distances[n][0] <=  1.5 * radius: #TODO CHECK THIS FACTOR
+              while n < len(distances) and distances[n][0] <=  2 * radius: #TODO CHECK THIS FACTOR
                   friendDist += [ (self.getMazeDistance(friendPos, distances[n][1]),  distances[n][1]) ]
                   n += 1
               friendDist.sort()
@@ -343,8 +351,9 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
               friendNextDist = friendDist[0][0]
               if friendNextDist <= minDistance:
                   minDistance = friendDist[-1][0]
-                  self.firstDot = friendDist[-1][1]
-                  return self.getFeatures(gameState, action)
+                  self.nextDot = friendDist[-1][1]
+                  features['distanceToFood'] = minDistance
+                  # return self.getFeatures(gameState, action)
                   #print 'Agent', self.index, "was going towards", myNextDot, "now going towards",  friendDist[-1][1]
 
               # IF he is closer, don't go for the closest dot
