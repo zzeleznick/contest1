@@ -323,7 +323,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         myFood = self.firstDot
     elif self.nextDot in foodList:
         #has my friend left the area, and should I eat it now?
-        if self.getMazeDistance(self.closestDot, myPos) <  self.getMazeDistance(self.closestDot, friendPos):
+        if self.closestDot in foodList and self.getMazeDistance(self.closestDot, myPos) <  self.getMazeDistance(self.closestDot, friendPos):
                 #or self.getMazeDistance(self.nextDot, myPos) > self.getMazeDistance(self.nextDot, friendPos):
             myFood = self.closestDot #REBIND to closer dot
         else:
