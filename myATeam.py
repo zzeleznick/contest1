@@ -273,14 +273,12 @@ class ReflexCaptureAgent(CaptureAgent):
     """
     Picks among the actions with the highest Q(s,a).
     """
-    while self.moves:
-        if self.getFood(gameState).asList() <=2:
-            moves = None
-            break
-        move = self.moves[0]
-        self.moves = self.moves[1:]
-        print "Using predetermined move:", move
-        return move
+    if self.getFood(gameState).asList() > 2:
+        while self.moves:
+         move = self.moves[0]
+         self.moves = self.moves[1:]
+         print "Using predetermined move:", move
+         return move
 
     actions = gameState.getLegalActions(self.index)
 

@@ -51,8 +51,8 @@ class DummyAgent(CaptureAgent):
     """
     This method handles the initial setup of the
     agent to populate useful fields (such as what team
-    we're on). 
-    
+    we're on).
+
     A distanceCalculator instance caches the maze distances
     between each pair of positions, so your agents can use:
     self.distancer.getDistance(p1, p2)
@@ -60,15 +60,15 @@ class DummyAgent(CaptureAgent):
     IMPORTANT: This method may run for at most 15 seconds.
     """
 
-    ''' 
+    '''
     Make sure you do not delete the following line. If you would like to
     use Manhattan distances instead of maze distances in order to save
     on initialization time, please take a look at
-    CaptureAgent.registerInitialState in captureAgents.py. 
+    CaptureAgent.registerInitialState in captureAgents.py.
     '''
     CaptureAgent.registerInitialState(self, gameState)
 
-    ''' 
+    '''
     Your initialization code goes here, if you need any.
     '''
 
@@ -79,7 +79,7 @@ class DummyAgent(CaptureAgent):
     """
     actions = gameState.getLegalActions(self.index)
 
-    ''' 
+    '''
     You should change this in your own agent.
     '''
 
@@ -103,12 +103,6 @@ class ReflexCaptureAgent(CaptureAgent):
     #this might make undue assumptions that we start on the same side as our other teammmate,
 
     #alternatively : def getFood(self, gameState): and find out how to divide
-    '''
-    if gameState.data.layout.width > gameState.data.layout.height:
-        self.lr = True
-    else:
-        self.lr = False
-    ''' ##currently this is always true
 
     "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
     if self.red: #and self.lr:
@@ -132,31 +126,25 @@ class ReflexCaptureAgent(CaptureAgent):
 
     "Q U A D R A N T  A S S I G N M E N T"
     pos = gameState.getAgentState(self.index).getPosition()
-    #self.friend = min(3 + int(not self.red), 4 - self.index + 2 * int(not self.red))
-    #nope, was agent 2 and red
-    #assume 1 and 2 are red, and the layout / help are dumb
-    #self.friend =  min(3 + int(not self.red), 3 - self.index + 4 * int(not self.red))
-    #nope, this was 1, and 2, but 1 was blue for some reason
-    #red is 0,2 derp....
-    #help file conflicts
     self.friend =  min(2 + int(not self.red), 2 - self.index + 2 * int(not self.red))
     friendPos = gameState.getAgentState(self.friend).getPosition()
     opps = [gameState.getAgentState(el).getPosition() for el in [1 - int(not self.red), 3 - int(not self.red)] ]
 
-    print "I am agent", self.index, "at position ", pos
-    #print "agent 0:", gameState.getAgentState(0).getPosition()
-    print "My friend agent", self.friend, "is at position ", friendPos
-    print "My first enemy agent is at position ", opps[0]
-    print "My second enemy agent is at position ", opps[1]
+    #print "I am agent", self.index, "at position ", pos
+    ##print "agent 0:", gameState.getAgentState(0).getPosition()
+    #print "My friend agent", self.friend, "is at position ", friendPos
+    #print "My first enemy agent is at position ", opps[0]
+    #print "My second enemy agent is at position ", opps[1]
 
     self.top = False
     self.undecided = False
 
     if pos[1] > friendPos[1]:
-        print "My friend is lower on the map, and I will take top Quad"
+        #print "My friend is lower on the map, and I will take top Quad"
         self.top = True
     elif pos[1] < friendPos[1]:
-        print "My friend is higher on the map, and I will take bottom Quad"
+        pass
+        #print "My friend is higher on the map, and I will take bottom Quad"
     else:
         self.undecided = True
 
@@ -167,21 +155,25 @@ class ReflexCaptureAgent(CaptureAgent):
 
     for el in self.initFood:
         if self.quandrantBottom.contains(el):
-            print "Food is in Bottom Quadrant at ", el
+            #print "Food is in Bottom Quadrant at ", el
             if not self.top:
                 self.myFood += [el]
         elif self.quandrantTop.contains(el):
-            print "Food is in Top Quadrant at ", el
+            #print "Food is in Top Quadrant at ", el
             if self.top:
                  self.myFood += [el]
         else:
-            print "Food is in neither quadrant at ", el
+            #print "Food is in neither quadrant at ", el
             self.myFood += [el]
 
     "I N I T I A L  F O O D  A S S I G N M E N T S "
-
+    self.myFood = sorted(self.myFood, key= lambda dot: self.getMazeDistance(self.start, dot))
+    self.firstDot = self.myFood[0]
+    #print "Agent", self.index, "First Dot is", self.firstDot
+    self.myFoodInitialSize = len(self.myFood)
 
     "D E B U G G I N G"
+    '''
     print "Coloring the bottom quadrant corners red"
     self.debugDraw([(leftEdge,0), (rightEdge, gameState.data.layout.height / 2)], [1,0,0], clear=False)
 
@@ -193,7 +185,7 @@ class ReflexCaptureAgent(CaptureAgent):
 
     print "Coloring my safe spaces", self.safeSpaces, "blue"
     self.debugDraw(self.safeSpaces, [0,0,1], clear=False)
-
+    '''
 
   def chooseAction(self, gameState):
     """
@@ -213,7 +205,7 @@ class ReflexCaptureAgent(CaptureAgent):
     foodLeft = len(self.getFood(gameState).asList())
 
     if foodLeft <= 2:
-      print "Time to go home! ", foodLeft, "dots remaining"
+      #print "Time to go home! ", foodLeft, "dots remaining"
       pos = gameState.getAgentState(self.index).getPosition()
       localbestDist = 9999
       dest = self.start
@@ -227,8 +219,9 @@ class ReflexCaptureAgent(CaptureAgent):
           dist = self.getMazeDistance(dest,pos)
           #print "possible destination at", dest
         except ValueError:
-            print "X: ", (self.safeColumn, pos[1] + el), "not valid destination"
-        print "Current destination to check at ", dest, "at dist:", dist
+            pass
+            #print "X: ", (self.safeColumn, pos[1] + el), "not valid destination"
+        #print "Current destination to check at ", dest, "at dist:", dist
 
         if dist < localbestDist:
           localbestDist = dist
@@ -245,9 +238,9 @@ class ReflexCaptureAgent(CaptureAgent):
               bestAction = action
               bestDist = dist
 
-      print "Found optimal safe space at", bestDest , "with dist", bestDist, "coloring spot now"
-      print "Agent ", self.index, "Going", bestAction, "\n"
-      self.debugDraw([bestDest], [1,1,0], clear=False)
+      #print "Found optimal safe space at", bestDest , "with dist", bestDist, "coloring spot now"
+      #print "Agent ", self.index, "Going", bestAction, "\n"
+      #self.debugDraw([bestDest], [1,1,0], clear=False)
 
       return bestAction
 
@@ -299,24 +292,11 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     features = util.Counter()
     successor = self.getSuccessor(gameState, action)
     foodList = self.getFood(successor).asList()
-    features['successorScore'] = -len(foodList)#self.getScore(successor)
-    myFood = []
-
-    '''
-    for el in foodList:
-        if self.quandrantTop.contains(el) and not self.top:
-          continue
-          #myFood += [el]
-        elif self.quandrantBottom.contains(el) and self.top:
-          continue
-          #myFood += [el]
-        else:
-          myFood += [el]
-    # Compute distance to the nearest food
-    if len(myFood) <= len(foodList) / 5 + 2:
-        myFood = foodList
-    '''
+    features['successorScore'] = -len(foodList)
     myFood = foodList
+    if self.firstDot in foodList: #if he hasn't eaten his assigned first dot
+        myFood = self.myFood
+
     if len(foodList) > 0: # This should always be True,  but better safe than sorry
       myPos = successor.getAgentState(self.index).getPosition()
       distances = [self.getMazeDistance(myPos, food) for food in myFood]
@@ -336,6 +316,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
       if not self.top and self.quandrantBottom.contains(myPos):
            features['inQuad'] =  myPos[1] - self.quandrantBottom.center[1] - self.quandrantTop.height / 2
       '''
+
       if action == Directions.STOP: features['stop'] = 1
       rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
 
@@ -367,90 +348,4 @@ def man(xy1, xy2):
 def debugDraw(self, cells, color, clear=False):
 Draws a colored box on each of the cells you specify. If clear is True, will clear all old drawings before drawing on the specified cells. This is useful for debugging the locations that your code works with. color: list of RGB values between 0 and 1 (i.e. [1,0,0] for red) cells: list of game positions to draw on (i.e. [(20,5), (3,22)])
 '''
-def findFood(pos, myFood, gameState, distanceFn = man):  # use self.getMazeDistance
 
-    from collections import OrderedDict
-
-    fg = myFood
-    print "fg as: ", fg
-    if len(fg) == 0:
-        return 0
-    elif len(fg) == 1:
-        return man(pos, fg[0])
-
-    unvisited = {}
-    '''
-    for el in fg:
-        unvisited.update({el: el})
-    '''
-    unvisited = OrderedDict((el, el) for el in fg)
-
-    farDist = 0
-    test = []
-    farCoord = unvisited.keys()[0]
-    print "Position: ", pos, "Far Distance testing with", farCoord
-
-    while unvisited:
-        node = distanceFn(pos, unvisited.keys()[0], gameState)
-        #print "node as ", node
-        for el in node:
-            #print "first traveled as", el
-            if  el in fg: #foodGrid[el[0]][el[1]]: #was there originally food there? O(1) #TODO use dict instead of list
-              try:
-                  unvisited.pop(el)
-              except KeyError:
-                  "print already visited, ", el
-        tmp = len(node)
-        #should remove self
-        #print tmp
-        if tmp > farDist:
-              test += [tmp]
-              farDist = tmp - 1 #includes start and end length
-              farCoord = node[-1]
-              farId = fg.index(farCoord)
-
-    ####this bit finds the true two farthest
-    unvisitedX = OrderedDict((el, el) for el in fg)
-    farNeighDist = 0
-
-    unvisitedX.pop(farCoord)
-
-    while unvisitedX:
-        node = distanceFn(farCoord, unvisitedX.keys()[-1],gameState)
-        #print "node as ", node
-        for el in node:
-            #print "first traveled as", el
-            if el in fg:    #foodGrid[el[0]][el[1]]: #was there originally food there? O(1) #TODO use dict instead of list
-              try:
-                  unvisitedX.pop(el)
-              except KeyError:
-                  "print already visited, ", el
-        tmp = len(node)  #this has all the states
-        #should remove self
-        #print tmp
-        if tmp > farNeighDist:
-              test += [tmp]
-              farNeighDist = tmp - 1
-              farNeighCoord = node[-1]
-
-    #farNeigh, farNeighDist = g.getVertex(fg[farId]).getFarthestNeighborInfo()
-    '''
-    res = farDist
-    '''
-    #print "Tested maze distances:", test
-    #print "Farthest Food dot at : ", fg[farId]#, "graph: ", g
-    ##print "displaying the max manhattan distance to neighbor of the farthest dot from pacman:", farNeighDist
-    #print "displaying the max maze distance to neighbor of the farthest dot from pacman:", farNeighDist
-    #print "Distance between ", pos, "and ", fg[farId], "is ", farDist
-    '''
-    if farNeighDist > farDist:  #might always be true
-       res = farNeighDist
-       #print "Thus we can update the graph from", farDist, "to ", farNeighDist
-    '''
-    nextDot = distanceFn(pos, farNeighCoord, gameState)
-    backdst = len(back) - 1
-    #what about farNeigh + dist(pac, farNeigh)
-    print "farthest dist to neigh: ", farNeighDist
-    print "pacman distance distance from farthest neigh: ", backdst
-
-    return backdst + farNeighDist

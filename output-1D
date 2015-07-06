@@ -1,0 +1,243 @@
+
+Red team myTreeTeam with {}:
+Loading Team: myTreeTeam.py
+Arguments: {}
+
+Blue team baselineTeam with {}:
+Loading Team: baselineTeam.py
+Arguments: {}
+Red team starts
+I am agent 0 at position  (1, 18)
+My friend agent 2 is at position  (1, 1)
+My first enemy agent is at position  (16, 18)
+My second enemy agent is at position  (16, 1)
+My friend is lower on the map, and I will take top Quad
+eval time for moves: 0.0000
+Coloring my safe column white
+Coloring my safe spaces [(7, 1), (7, 4), (7, 5), (7, 7), (7, 8), (7, 9), (7, 10), (7, 11), (7, 12), (7, 14), (7, 16), (7, 17)] blue
+I am agent 2 at position  (1, 1)
+My friend agent 0 is at position  (1, 18)
+My first enemy agent is at position  (16, 18)
+My second enemy agent is at position  (16, 1)
+My friend is higher on the map, and I will take bottom Quad
+eval time for moves: 0.0000
+Coloring my safe column white
+Coloring my safe spaces [(7, 1), (7, 4), (7, 5), (7, 7), (7, 8), (7, 9), (7, 10), (7, 11), (7, 12), (7, 14), (7, 16), (7, 17)] blue
+Calculating 60 moves  as player 0 from  (1, 18)
+Cached value
+
+eval time for pruned tree is: 1.5141
+Expanded Nodes:  4488
+Popped Nodes from Fringe:  2368
+Allowed zombies to roam: 1383
+ | Reborn: 0  | Killed: 351  | Lives:  7 |
+Final Destination at  (((12, 1), (1, 2)), -3721) of depth 75 with score -3721
+Optimal moves found to be:  [['North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North'], ['South', 'South', 'South', 'South', 'South', 'South', 'South', 'East', 'East', 'East', 'East', 'North', 'East', 'East', 'East', 'East', 'East', 'South', 'South', 'South', 'South', 'South', 'East', 'East', 'North', 'East', 'East', 'South', 'South', 'South', 'South', 'West', 'West', 'West', 'South', 'South', 'South', 'East']]
+Coords Traveled as 0 [(1, 17), (1, 16), (1, 15), (1, 14), (1, 13), (1, 12), (1, 11), (2, 11), (3, 11), (4, 11), (5, 11), (5, 12), (6, 12), (7, 12), (8, 12), (9, 12), (10, 12), (10, 11), (10, 10), (10, 9), (10, 8), (10, 7), (11, 7), (12, 7), (12, 8), (13, 8), (14, 8), (14, 7), (14, 6), (14, 5), (14, 4), (13, 4), (12, 4), (11, 4), (11, 3), (11, 2), (11, 1), (12, 1)]
+Friend coords Traveled [(1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2), (1, 1), (1, 2)]
+Number of Pellets Left 37
+Going  South towards  (((12, 1), (1, 2)), -3721) 
+
+On move  1 as player 0 going South from (1, 18)
+Calculating 60 moves  as player 2 from  (1, 1)
+Cached value
+
+eval time for pruned tree is: 1.2160
+Expanded Nodes:  3620
+Popped Nodes from Fringe:  1976
+Allowed zombies to roam: 1131
+ | Reborn: 0  | Killed: 321  | Lives:  7 |
+Final Destination at  (((10, 17), (1, 16)), -3720) of depth 74 with score -3720
+Optimal moves found to be:  [['South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South'], ['North', 'North', 'North', 'North', 'North', 'North', 'North', 'East', 'East', 'East', 'East', 'South', 'East', 'East', 'East', 'East', 'East', 'North', 'North', 'North', 'North', 'North', 'East', 'East', 'South', 'East', 'East', 'North', 'North', 'North', 'North', 'North', 'North', 'West', 'West', 'West', 'West']]
+Coords Traveled as 2 [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (2, 8), (3, 8), (4, 8), (5, 8), (5, 7), (6, 7), (7, 7), (8, 7), (9, 7), (10, 7), (10, 8), (10, 9), (10, 10), (10, 11), (10, 12), (11, 12), (12, 12), (12, 11), (13, 11), (14, 11), (14, 12), (14, 13), (14, 14), (14, 15), (14, 16), (14, 17), (13, 17), (12, 17), (11, 17), (10, 17)]
+Friend coords Traveled [(1.0, 17.0), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17), (1, 16), (1, 17)]
+Number of Pellets Left 37
+Going  North towards  (((10, 17), (1, 16)), -3720) 
+
+On move  1 as player 2 going North from (1, 1)
+On move  2 as player 0 going South from (1, 17)
+On move  2 as player 2 going North from (1, 2)
+On move  3 as player 0 going South from (1, 16)
+On move  3 as player 2 going North from (1, 3)
+On move  4 as player 0 going South from (1, 15)
+On move  4 as player 2 going North from (1, 4)
+On move  5 as player 0 going South from (1, 14)
+On move  5 as player 2 going North from (1, 5)
+On move  6 as player 0 going South from (1, 13)
+On move  6 as player 2 going North from (1, 6)
+On move  7 as player 0 going South from (1, 12)
+On move  7 as player 2 going North from (1, 7)
+On move  8 as player 0 going East from (1, 11)
+On move  8 as player 2 going East from (1, 8)
+On move  9 as player 0 going East from (2, 11)
+On move  9 as player 2 going East from (2, 8)
+On move  10 as player 0 going East from (3, 11)
+On move  10 as player 2 going East from (3, 8)
+On move  11 as player 0 going East from (4, 11)
+On move  11 as player 2 going East from (4, 8)
+On move  12 as player 0 going North from (5, 11)
+On move  12 as player 2 going South from (5, 8)
+On move  13 as player 0 going East from (5, 12)
+On move  13 as player 2 going East from (5, 7)
+On move  14 as player 0 going East from (6, 12)
+On move  14 as player 2 going East from (6, 7)
+On move  15 as player 0 going East from (7, 12)
+On move  15 as player 2 going East from (7, 7)
+On move  16 as player 0 going East from (8, 12)
+On move  16 as player 2 going East from (8, 7)
+On move  17 as player 0 going East from (9, 12)
+On move  17 as player 2 going East from (9, 7)
+On move  18 as player 0 going South from (10, 12)
+On move  18 as player 2 going North from (10, 7)
+On move  19 as player 0 going South from (10, 11)
+On move  19 as player 2 going North from (10, 8)
+On move  20 as player 0 going South from (10, 10)
+On move  20 as player 2 going North from (10, 9)
+On move  21 as player 0 going South from (10, 9)
+On move  21 as player 2 going North from (10, 10)
+On move  22 as player 0 going South from (10, 8)
+On move  22 as player 2 going North from (10, 11)
+On move  23 as player 0 going East from (10, 7)
+On move  23 as player 2 going East from (10, 12)
+On move  24 as player 0 going East from (11, 7)
+On move  24 as player 2 going East from (11, 12)
+On move  25 as player 0 going North from (12, 7)
+On move  25 as player 2 going South from (12, 12)
+On move  26 as player 0 going East from (12, 8)
+On move  26 as player 2 going East from (12, 11)
+On move  27 as player 0 going East from (13, 8)
+On move  27 as player 2 going East from (13, 11)
+On move  28 as player 0 going South from (14, 8)
+On move  28 as player 2 going North from (14, 11)
+On move  29 as player 0 going South from (14, 7)
+On move  29 as player 2 going North from (14, 12)
+On move  30 as player 0 going South from (14, 6)
+On move  30 as player 2 going North from (14, 13)
+On move  31 as player 0 going South from (14, 5)
+On move  31 as player 2 going North from (14, 14)
+On move  32 as player 0 going West from (14, 4)
+On move  32 as player 2 going North from (14, 15)
+On move  33 as player 0 going West from (13, 4)
+On move  33 as player 2 going North from (14, 16)
+On move  34 as player 0 going West from (12, 4)
+On move  34 as player 2 going West from (14, 17)
+On move  35 as player 0 going South from (11, 4)
+On move  35 as player 2 going West from (13, 17)
+On move  36 as player 0 going South from (11, 3)
+On move  36 as player 2 going West from (12, 17)
+On move  37 as player 0 going South from (11, 2)
+On move  37 as player 2 going West from (11, 17)
+On move  38 as player 0 going East from (11, 1)
+Tried to access index 37 in list of length 37 more moves now generated
+Calculating 60 moves  as player 2 from  (10, 17)
+Cached value
+
+eval time for pruned tree is: 1.3473
+Expanded Nodes:  5664
+Popped Nodes from Fringe:  3452
+Allowed zombies to roam: 2274
+ | Reborn: 0  | Killed: 909  | Lives:  7 |
+Final Destination at  (((10, 5), (13, 1)), -907) of depth 43 with score -907
+Optimal moves found to be:  [['East', 'West', 'East', 'West', 'East', 'West', 'East', 'West', 'East', 'West', 'East', 'West', 'East', 'West', 'East', 'West', 'East', 'West', 'East', 'West', 'East'], ['East', 'East', 'South', 'South', 'South', 'South', 'West', 'South', 'West', 'South', 'South', 'South', 'South', 'South', 'East', 'East', 'South', 'South', 'South', 'West', 'West', 'North']]
+Coords Traveled as 2 [(11, 17), (12, 17), (12, 16), (12, 15), (12, 14), (12, 13), (11, 13), (11, 12), (10, 12), (10, 11), (10, 10), (10, 9), (10, 8), (10, 7), (11, 7), (12, 7), (12, 6), (12, 5), (12, 4), (11, 4), (10, 4), (10, 5)]
+Friend coords Traveled [(12.0, 1.0), (13, 1), (12, 1), (13, 1), (12, 1), (13, 1), (12, 1), (13, 1), (12, 1), (13, 1), (12, 1), (13, 1), (12, 1), (13, 1), (12, 1), (13, 1), (12, 1), (13, 1), (12, 1), (13, 1), (12, 1), (13, 1)]
+Number of Pellets Left 11
+Going  East towards  (((10, 5), (13, 1)), -907) 
+
+On move  1 as player 2 going East from (10, 17)
+Tried to access index 38 in list of length 38 more moves now generated
+Calculating 60 moves  as player 0 from  (12, 1)
+Cached value
+
+eval time for pruned tree is: 4.4911
+Expanded Nodes:  14764
+Popped Nodes from Fringe:  10185
+Allowed zombies to roam: 6195
+ | Reborn: 0  | Killed: 2596  | Lives:  7 |
+Final Destination at  (((10, 4), (11, 17)), -907) of depth 21 with score -907
+Optimal moves found to be:  [['East', 'East', 'West', 'East', 'West', 'East', 'West', 'East', 'West', 'West'], ['East', 'East', 'North', 'North', 'North', 'West', 'West', 'West', 'West', 'North', 'South']]
+Coords Traveled as 0 [(13, 1), (14, 1), (14, 2), (14, 3), (14, 4), (13, 4), (12, 4), (11, 4), (10, 4), (10, 5), (10, 4)]
+Friend coords Traveled [(11.0, 17.0), (12, 17), (13, 17), (12, 17), (13, 17), (12, 17), (13, 17), (12, 17), (13, 17), (12, 17), (11, 17)]
+Number of Pellets Left 11
+Going  East towards  (((10, 4), (11, 17)), -907) 
+
+On move  1 as player 0 going East from (12, 1)
+On move  2 as player 2 going East from (11, 17)
+On move  2 as player 0 going East from (13, 1)
+On move  3 as player 2 going South from (12, 17)
+On move  3 as player 0 going North from (14, 1)
+On move  4 as player 2 going South from (12, 16)
+On move  4 as player 0 going North from (14, 2)
+On move  5 as player 2 going South from (12, 15)
+On move  5 as player 0 going North from (14, 3)
+On move  6 as player 2 going South from (12, 14)
+On move  6 as player 0 going West from (14, 4)
+On move  7 as player 2 going West from (12, 13)
+On move  7 as player 0 going West from (13, 4)
+On move  8 as player 2 going South from (11, 13)
+On move  8 as player 0 going West from (12, 4)
+On move  9 as player 2 going West from (11, 12)
+On move  9 as player 0 going West from (11, 4)
+On move  10 as player 2 going South from (10, 12)
+On move  10 as player 0 going North from (10, 4)
+On move  11 as player 2 going South from (10, 11)
+On move  11 as player 0 going South from (10, 5)
+On move  12 as player 2 going South from (10, 10)
+Tried to access index 11 in list of length 11 more moves now generated
+Calculating 60 moves  as player 0 from  (10, 4)
+Cached value
+
+eval time for pruned tree is: 3.8119
+Expanded Nodes:  14164
+Popped Nodes from Fringe:  8547
+Allowed zombies to roam: 5707
+ | Reborn: 0  | Killed: 2303  | Lives:  7 |
+Final Destination at  (((7, 17), (10, 9)), -56) of depth 96 with score -56
+Optimal moves found to be:  [['North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South'], ['East', 'East', 'North', 'North', 'North', 'North', 'North', 'North', 'North', 'East', 'West', 'North', 'West', 'West', 'South', 'North', 'West', 'West', 'West', 'South', 'South', 'South', 'South', 'South', 'East', 'East', 'East', 'North', 'North', 'South', 'South', 'West', 'West', 'West', 'North', 'North', 'North', 'North', 'North', 'West', 'North', 'North', 'West', 'North', 'North', 'East', 'East', 'North']]
+Coords Traveled as 0 [(10.0, 4.0), (11, 4), (12, 4), (12, 5), (12, 6), (12, 7), (12, 8), (12, 9), (12, 10), (12, 11), (13, 11), (12, 11), (12, 12), (11, 12), (10, 12), (10, 11), (10, 12), (9, 12), (8, 12), (7, 12), (7, 11), (7, 10), (7, 9), (7, 8), (7, 7), (8, 7), (9, 7), (10, 7), (10, 8), (10, 9), (10, 8), (10, 7), (9, 7), (8, 7), (7, 7), (7, 8), (7, 9), (7, 10), (7, 11), (7, 12), (6, 12), (6, 13), (6, 14), (5, 14), (5, 15), (5, 16), (6, 16), (7, 16), (7, 17)]
+Friend coords Traveled [(10.0, 9.0), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10), (10, 9), (10, 10)]
+Number of Pellets Left 4
+Going  East towards  (((7, 17), (10, 9)), -56) 
+
+On move  1 as player 0 going East from (10, 4)
+On move  13 as player 2 going South from (10, 9)
+On move  2 as player 0 going East from (11, 4)
+On move  14 as player 2 going South from (10, 8)
+On move  3 as player 0 going North from (12, 4)
+On move  15 as player 2 going East from (10, 7)
+On move  4 as player 0 going North from (12, 5)
+On move  16 as player 2 going East from (11, 7)
+On move  5 as player 0 going North from (12, 6)
+On move  17 as player 2 going South from (12, 7)
+On move  6 as player 0 going North from (12, 7)
+On move  18 as player 2 going South from (12, 6)
+On move  7 as player 0 going North from (12, 8)
+On move  19 as player 2 going South from (12, 5)
+On move  8 as player 0 going North from (12, 9)
+On move  20 as player 2 going West from (12, 4)
+On move  9 as player 0 going North from (12, 10)
+On move  21 as player 2 going West from (11, 4)
+On move  10 as player 0 going East from (12, 11)
+On move  22 as player 2 going North from (10, 4)
+On move  11 as player 0 going West from (13, 11)
+Tried to access index 22 in list of length 22 more moves now generated
+Calculating 60 moves  as player 2 from  (10, 5)
+Cached value
+
+eval time for pruned tree is: 4.2765
+Expanded Nodes:  15404
+Popped Nodes from Fringe:  10721
+Allowed zombies to roam: 6906
+ | Reborn: 0  | Killed: 3142  | Lives:  7 |
+Final Destination at  (((10, 16), (12, 12)), -408) of depth 34 with score -408
+Optimal moves found to be:  [['North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North', 'South', 'North'], ['South', 'East', 'East', 'North', 'North', 'North', 'North', 'North', 'North', 'North', 'North', 'North', 'North', 'North', 'North', 'West', 'West']]
+Coords Traveled as 2 [(10.0, 5.0), (10, 4), (11, 4), (12, 4), (12, 5), (12, 6), (12, 7), (12, 8), (12, 9), (12, 10), (12, 11), (12, 12), (12, 13), (12, 14), (12, 15), (12, 16), (11, 16), (10, 16)]
+Friend coords Traveled [(12.0, 11.0), (12, 12), (12, 11), (12, 12), (12, 11), (12, 12), (12, 11), (12, 12), (12, 11), (12, 12), (12, 11), (12, 12), (12, 11), (12, 12), (12, 11), (12, 12), (12, 11)]
+Number of Pellets Left 4
+Going  South towards  (((10, 16), (12, 12)), -408) 
+
+On move  1 as player 2 going South from (10, 5)
+On move  12 as player 0 going North from (12, 11)
+On move  2 as player 2 going East from (10, 4)
+On move  13 as player 0 going West from (12, 12)
+The Blue team has returned at least 35 of the opponents' dots.
