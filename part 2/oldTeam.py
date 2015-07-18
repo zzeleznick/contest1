@@ -1,4 +1,4 @@
-# curTeam.py
+# oldTeam.py
 # ---------
 # Licensing Information:  You are free to use or extend these projects for
 # educational purposes provided that (1) you do not distribute or publish
@@ -48,11 +48,11 @@ class ReflexCaptureAgent(CaptureAgent):
   """
   A base class for reflex agents that chooses score-maximizing actions
   """
- 
+
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
-    self.debugging = True
+    self.debugging = False
 
     "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
     if self.red:
@@ -211,7 +211,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
   def getFeatures(self, gameState, action):
     features = util.Counter()
     successor = self.getSuccessor(gameState, action)
-    foodList = self.getFood(successor).asList()    
+    foodList = self.getFood(successor).asList()
     features['successorScore'] = -len(foodList)#self.getScore(successor)
 
     myPos = successor.getAgentState(self.index).getPosition()
@@ -331,29 +331,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
       ### Can I detect if I've trapped my opponent?
       if self.trappedOpponent(myPos, invaders, gameState):
           features['stop'] = -1  #100 point bonus (-1 * -100)
-          ## NOTE: This also rewards trapping with an action like west since the bonus is activated
-          ##  Suppose we have trapped opponent at 2 away, do we go left, down or stay?
-          ##  We would want to minimize distance, and could go either way, but the second move matters greatly
-          ##  Here, for b1 and b2, we can only get our bonus if we block the exit
-          ##  Moving towards the exit will also reduce our distance (win)
-          '''
-          case a.  (Our turn)
-           _____
-          | o __
-          |x |
 
-          case b1.
-           _____
-          |o  __
-          | x|
-
-          case b2.
-           _____
-          |x  __
-          | o|
-
-
-          '''
 
     else:  #allow reverse when there are invaders at no penalty
         rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
