@@ -53,6 +53,7 @@ class ReflexCaptureAgent(CaptureAgent):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
     self.debugging = True
+    self.stationaryTolerance = random.randint(6,16)
 
     "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
     if self.red:
@@ -141,13 +142,13 @@ class ReflexCaptureAgent(CaptureAgent):
                 #if gameState.o
     if len(bestActions) == 1:
         #if bestActions[0] == Directions.STOP:
-        if len(self.observationHistory) > 3:#pass
-
-            stationary = [False for i in xrange(1,4) \
+        if len(self.observationHistory) > self.stationaryTolerance:
+            stationary = [False for i in xrange(1,self.stationaryTolerance) \
             if self.observationHistory[-i].getAgentPosition(self.index) != gameState.getAgentPosition(self.index)]
 
             if not False in stationary:
               #have we been staring at an offensive player head to head?
+              self.stationaryTolerance = random.randint(6,16)  #reset tolerance and return move
               if not self.red and Directions.EAST in actions:
                   return Directions.EAST
               elif self.red and Directions.WEST in actions:
