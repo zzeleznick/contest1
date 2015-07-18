@@ -340,8 +340,31 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     weights['distanceToFood'] = -1
     weights['actionPenalty'] = 1  #will prune stop from choose action
 
+
+    '''
+    # pac has eaten one dot and now must choose whether to eat more dots or return home
+    # closest dot 3 away
+    # safe is 3 away
+    # ghost is 7 away from current pac
+    # pac could go 3, eat the dot, ghost would be 4 away
+    # chance that ghost blocks exit, or pac escapes depending on junction
+    # would need to plan for worst case and recognize a cave
+     ________
+    | _____g_
+    | |_____
+    |p _.___|
+    __|
+
+     ________
+    | _____g_
+     p|____
+    |  ____|
+    _.|
+
+    '''
+
     if gameState.getAgentState(self.index).numCarrying > 0:
-        weights['distanceToSafe'] = -1.5
+        weights['distanceToSafe'] = -1  #changing from -1.5 for test
         weights['ghostDistance'] = 1 # default to feature score for ghostDistance; else keep at 0
     else:
         weights['ghostDistance'] = 1 # tried .5 and pac started running into ghosts
