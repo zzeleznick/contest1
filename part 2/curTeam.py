@@ -249,6 +249,16 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
           .
         g. p .   g
 
+        g
+
+         .
+        p
+
+
+        g
+         .|
+         p|
+
       '''
 
       if len(ghosts) > 0:
@@ -261,10 +271,11 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
          baseScore = min(-4 + gtl[0][0], 0)
          if gtl[0][0] == 0:  #check to see if 1) ghost is scared  2) this is best option?
              baseScore -= 100
-         elif gtl[0][0] <= 1:
+         elif gtl[0][0] == 1:  #allow enemy to eat -- no!
+             baseScore -= 100
+         elif gtl[0][0] == 2:  #try
              if action == Directions.STOP:
-                 baseScore -= 100
-             pass
+                 baseScore -= .5
          elif gtl[0][0] <= 4:
              pass #might want to adjust -- defaulting to linear
          else:   #ghost is 5 or more away
@@ -312,7 +323,13 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
 
     # Computes whether we're on defense (1) or offense (0)
     features['onDefense'] = 1
-    if myState.isPacman: features['onDefense'] = 0
+    #if myState.isPacman: features['onDefense'] = 0
+    if self.red:
+        if myPos > self.safeColumn:
+            features['onDefense'] = 0
+    else:
+        if myPos < self.safeColumn:
+            features['onDefense'] = 0
 
     # Computes distance to invaders we can see
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
@@ -359,10 +376,18 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
         rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
         if action == rev: features['reverse'] = 1
 
+        capsules = self.getCapsulesYouAreDefending(gameState)
+        if len(capsules) > 0:
+            dists = [self.getMazeDistance(myPos, c) for c in capsules]
+            features['capsuleDistance'] = min(dists)
+            if action == Directions.STOP: features['stop'] = 0 ##allow squatting
+
+
     return features
 
   def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2}
+    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}
+
 
 '''
           BIG QUESTION:
