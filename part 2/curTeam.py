@@ -132,15 +132,18 @@ class ReflexCaptureAgent(CaptureAgent):
     bestActions = [a for a, v in zip(actions, values) if v == maxValue]
     reversedAction = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
     if reversedAction in bestActions:
-        print "Hmmm"
+        print "Hmmm. multiple best moves"
+        '''  ________
+        exit ___p___.   possible scenario
 
+        '''
     if len(bestActions) > 1:
         for action in bestActions:
-            if action != Directions.STOP:
+            if action != Directions.STOP and not reversedAction:
                 return action
             else:
                 if self.debugging:
-                    print "Agent", self.index, "thinks stop is a good idea from pos", gameState.getAgentPosition(self.index)
+                    print "Agent", self.index, "thinks stop or reverse is a good idea from pos", gameState.getAgentPosition(self.index)
                 #if gameState.o
     if len(bestActions) == 1:
         #if bestActions[0] == Directions.STOP:
