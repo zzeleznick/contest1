@@ -148,8 +148,11 @@ class ReflexCaptureAgent(CaptureAgent):
 
              if self.getState() == 'DEFENSE':
                  distToSafe = self.findHome(nextPos,gameState)
-                 if distToSafe < dist:   # at a junction (e.g. go north or east)
-                    dist = distToSafe
+                 foodList = self.getFoodYouAreDefending(nextConfig).asList()
+                 if len(foodList) > 0: # This should always be True,  but better safe than sorry
+                    foodDist = min([self.getMazeDistance(nextPos, food) for food in foodList])
+                 if distToSafe + .75 *foodDist <= dist:   # at a junction (e.g. go north or east)
+                    dist = distToSafe + .75 *foodDist
                     newBestAction = action
 
              elif self.getState() == 'OFFENSE': #junction between going home or getting food
