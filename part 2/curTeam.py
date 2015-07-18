@@ -138,7 +138,20 @@ class ReflexCaptureAgent(CaptureAgent):
             else:
                 if self.debugging:
                     print "Agent", self.index, "thinks stop is a good idea from pos", gameState.getAgentPosition(self.index)
+                #if gameState.o
+    if len(bestActions) == 1:
+        #if bestActions[0] == Directions.STOP:
+        if len(self.observationHistory) > 3:#pass
 
+            stationary = [False for i in xrange(1,4) \
+            if self.observationHistory[-i].getAgentPosition(self.index) != gameState.getAgentPosition(self.index)]
+
+            if not False in stationary:
+              #have we been staring at an offensive player head to head?
+              if not self.red and Directions.EAST in actions:
+                  return Directions.EAST
+              elif self.red and Directions.WEST in actions:
+                  return Directions.WEST
     return random.choice(bestActions)
 
   def getSuccessor(self, gameState, action):
