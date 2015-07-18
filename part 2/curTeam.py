@@ -139,7 +139,7 @@ class ReflexCaptureAgent(CaptureAgent):
         '''
     if len(bestActions) > 1:
         for action in bestActions:
-            if action != Directions.STOP and not reversedAction:
+            if action != Directions.STOP: #and not reversedAction:
                 return action
             else:
                 if self.debugging:
