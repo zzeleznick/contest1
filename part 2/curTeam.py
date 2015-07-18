@@ -131,6 +131,14 @@ class ReflexCaptureAgent(CaptureAgent):
           bestDist = dist
       return bestAction
 
+    if len(bestActions) > 1:
+        for action in bestActions:
+            if action != Directions.STOP:
+                return action
+            else:
+                if self.debugging:
+                    print "Agent", self.index, "thinks stop is a good idea from pos", gameState.getAgentPosition(self.index)
+
     return random.choice(bestActions)
 
   def getSuccessor(self, gameState, action):
@@ -200,6 +208,25 @@ class ReflexCaptureAgent(CaptureAgent):
             print "** Agent ", self.index, "Believes we have trapped opp located  at", opPos
     return True
 
+  def trapped(self, pos, trapper, gameState):
+    '''
+    Returns true if this agent is closer to all of the opponent's safe spaces
+    :param pos: our position
+    :param trapper: identity of the opponent who is trapping us
+    :param gameState:
+    '''
+    ## assume at most we will be 6 away from the ghost we are trying to trap, and only count the closer one for now
+    opPos = trapper.getPosition()
+    sep = self.getMazeDistance(pos, opPos)
+
+    if self.debugging:
+            print "* Agent ", self.index, "Examining if we have been trapped by enemy"
+    for space in self.safeSpaces:
+        if self.getMazeDistance(pos,space) < self.getMazeDistance(opPos,space):
+            return False
+    if self.debugging:
+            print "** Agent ", self.index, "Believes we have been trapped opp located  at", opPos
+    return True
 
 
 class OffensiveReflexAgent(ReflexCaptureAgent):
@@ -215,10 +242,10 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     features['successorScore'] = -len(foodList)#self.getScore(successor)
 
     myPos = successor.getAgentState(self.index).getPosition()
-
+    '''
     if action == Directions.STOP:
         features['actionPenalty'] = -.5
-
+    '''
     numCarrying = gameState.getAgentState(self.index).numCarrying
     features['numCarrying'] = numCarrying
 
@@ -267,25 +294,39 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
              tmp = gtl[0]
              gtl[0] = gtl[-1]
              gtl[-1] = tmp
-         #GhostTupleList
+
+         #GhostTupleList <- gtl (closest ghost that can hurt us
+         closeGhost =  gtl[0][1]
          baseScore = min(-4 + gtl[0][0], 0)
-         if gtl[0][0] == 0:  #check to see if 1) ghost is scared  2) this is best option?
-             baseScore -= 100
-         elif gtl[0][0] == 1:  #allow enemy to eat -- no!
-             baseScore -= 100
-         elif gtl[0][0] == 2:  #try
-             if action == Directions.STOP:
-                 baseScore -= .5
-         elif gtl[0][0] <= 4:
-             pass #might want to adjust -- defaulting to linear
-         else:   #ghost is 5 or more away
-             return 0
+         '''
+             _____
+             x_o._|
+
+         '''
+         oldPos = gameState.getAgentState(self.index).getPosition()
+
+         if self.trapped(pos, closeGhost, gameState):
+            #generally this is a very bad move
+            baseScore -= 50
+            if self.findHome(pos, gameState) < self.findHome(oldPos, gameState):
+                baseScore += 1  #heading home
+            else:
+                # we are running away or stopping which seems futile
+                pass
+         else:
+             if gtl[0][0] == 0:  #check to see if 1) ghost is scared  2) this is best option?
+                 baseScore -= 100
+             elif gtl[0][0] == 1:  #allow enemy to eat -- no!
+                 baseScore -= 100
+             elif gtl[0][0] <= 4:  #Here is the real challenge. Can we recognize our demise
+                 pass
+             else:   #ghost is 5 or more away
+                 return 0
 
          if gtl[0][1].scaredTimer >= 5:
              # +.5 to head towards ghost if moving towards him from old pos
-             presentPos = gameState.getAgentState(self.index).getPosition()
-             if self.getMazeDistance(presentPos, gtl[0][1].getPosition()) < gtl[0][0]:
-               baseScore = .5
+             if gtl[0][0] < self.getMazeDistance(oldPos, closeGhost):
+               baseScore += .5
 
          return baseScore
 
@@ -297,7 +338,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     weights = util.Counter()
     weights['successorScore'] = 100
     weights['distanceToFood'] = -1
-    weights['actionPenalty'] = 1
+    weights['actionPenalty'] = 1  #will prune stop from choose action
 
     if gameState.getAgentState(self.index).numCarrying > 0:
         weights['distanceToSafe'] = -1.5
