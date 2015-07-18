@@ -59,15 +59,20 @@ class ReflexCaptureAgent(CaptureAgent):
         leftEdge = gameState.data.layout.width / 2
         rightEdge =  gameState.data.layout.width - 2
         self.safeColumn = leftEdge - 2
+        self.opSafeColumn = leftEdge + 2
     else:
         leftEdge = 1
         rightEdge = gameState.data.layout.width / 2
         self.safeColumn = rightEdge + 2
+        self.opSafeColumn = rightEdge - 2
 
     self.safeSpaces = []
+    self.opSafeSpaces = []
     for h in xrange(1,gameState.data.layout.height-1):
         if not gameState.data.layout.isWall((self.safeColumn, h)):
                self.safeSpaces += [(self.safeColumn, h)]
+        if not gameState.data.layout.isWall((self.opSafeColumn, h)):
+               self.opSafeSpaces += [(self.opSafeColumn, h)]
 
     print "Coloring my safe column white"
     self.debugDraw([(self.safeColumn, el) for el in xrange(0, gameState.data.layout.height)], [1,1,1], clear=False)
@@ -84,17 +89,10 @@ class ReflexCaptureAgent(CaptureAgent):
       distToSafe = 9999
       dest = self.start
       bestDest = dest
-      dist = self.getMazeDistance(dest,pos)
+      distToSafe = self.getMazeDistance(dest,pos)
 
-      for el in xrange(-2,4):
-        try:
-          idx = self.safeSpaces.index((self.safeColumn, pos[1] + el))
-          dest = self.safeSpaces[idx]
-          dist = self.getMazeDistance(dest,pos)
-          #print "possible destination at", dest
-        except ValueError:
-            pass
-            #print "X: ", (self.safeColumn, pos[1] + el), "not valid destination"
+      for space in self.safeSpaces:
+        dist = self.getMazeDistance(space,pos)
         #print "Current destination to check at ", dest, "at dist:", dist
         if dist < distToSafe:
           distToSafe = dist
@@ -171,7 +169,36 @@ class ReflexCaptureAgent(CaptureAgent):
     """
     return {'successorScore': 1.0}
 
+  def trappedOpponent(self, pos, invaders, gameState):
+    '''
+    Returns true if this agent is closer to all of the opponent's safe spaces
+    :param pos: our position
+    :param invaders: invading enemies (a list)
+    :param gameState:
+    :return:
+    '''
+    ## assume at most we will be 6 away from the ghost we are trying to trap, and only count the closer one for now
+    if len(invaders) == 0:
+        return False  #should not be called otherwise
 
+    closerInvader = invaders[0]
+    sep = self.getMazeDistance(pos, closerInvader.getPosition())
+    if self.getMazeDistance(pos, invaders[-1].getPosition()) < sep:
+         closerInvader = invaders[-1]
+         sep = self.getMazeDistance(pos, closerInvader.getPosition())
+
+    #dest = closerInvader.start
+    opPos = closerInvader.getPosition()
+    #dist = self.getMazeDistance(dest, opPos)
+
+    if self.debugging:
+            print "* Agent ", self.index, "Examining if we are trapping an invader"
+    for space in self.opSafeSpaces:
+        if self.getMazeDistance(pos,space) >= self.getMazeDistance(opPos,space):
+            return False
+    if self.debugging:
+            print "** Agent ", self.index, "Believes we have trapped opp located  at", opPos
+    return True
 
 
 
@@ -265,7 +292,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         weights['distanceToSafe'] = -1.5
         weights['ghostDistance'] = 1 # default to feature score for ghostDistance; else keep at 0
     else:
-        weights['ghostDistance'] = .5
+        weights['ghostDistance'] = 1 # tried .5 and pac started running into ghosts
     return weights
 
 class DefensiveReflexAgent(ReflexCaptureAgent):
@@ -291,13 +318,24 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
     invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
     features['numInvaders'] = len(invaders)
+
+    if action == Directions.STOP: features['stop'] = 1
+
     if len(invaders) > 0:
       dists = [self.getMazeDistance(myPos, a.getPosition()) for a in invaders]
       features['invaderDistance'] = min(dists)
+      if gameState.getAgentState(self.index).scaredTimer >= 1:
+          pass
+          ## block other capsule? or just run away?
 
-    if action == Directions.STOP: features['stop'] = 1
-    rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
-    if action == rev: features['reverse'] = 1
+      ### Can I detect if I've trapped my opponent?
+      if self.trappedOpponent(myPos, invaders, gameState):
+          features['stop'] = -1  #100 point bonus (-1 * -100)
+
+
+    else:  #allow reverse when there are invaders at no penalty
+        rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
+        if action == rev: features['reverse'] = 1
 
     return features
 
