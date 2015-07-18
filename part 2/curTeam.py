@@ -52,7 +52,7 @@ class ReflexCaptureAgent(CaptureAgent):
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
-    self.debugging = True
+    self.debugging = False
     self.stationaryTolerance = random.randint(6,16)
 
     "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
@@ -75,11 +75,12 @@ class ReflexCaptureAgent(CaptureAgent):
         if not gameState.data.layout.isWall((self.opSafeColumn, h)):
                self.opSafeSpaces += [(self.opSafeColumn, h)]
 
-    print "Coloring my safe column white"
-    self.debugDraw([(self.safeColumn, el) for el in xrange(0, gameState.data.layout.height)], [1,1,1], clear=False)
+    if self.debugging:
+        print "Coloring my safe column white"
+        self.debugDraw([(self.safeColumn, el) for el in xrange(0, gameState.data.layout.height)], [1,1,1], clear=False)
 
-    print "Coloring my safe spaces", self.safeSpaces, "blue"
-    self.debugDraw(self.safeSpaces, [0,0,1], clear=False)
+        print "Coloring my safe spaces", self.safeSpaces, "blue"
+        self.debugDraw(self.safeSpaces, [0,0,1], clear=False)
 
   def findHome(self, pos, gameState):
       '''
@@ -132,7 +133,8 @@ class ReflexCaptureAgent(CaptureAgent):
     bestActions = [a for a, v in zip(actions, values) if v == maxValue]
     reversedAction = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
     if reversedAction in bestActions:
-        print "Hmmm. multiple best moves"
+        if self.debugging:
+            print "Hmmm. multiple best moves"
         '''  ________
         exit ___p___.   possible scenario
 
@@ -147,7 +149,7 @@ class ReflexCaptureAgent(CaptureAgent):
                 #if gameState.o
     if len(bestActions) == 1:
         #if bestActions[0] == Directions.STOP:
-        if len(self.observationHistory) > self.stationaryTolerance:
+        if len(self.observationHistory) > self.stationaryTolerance and self.index == 0 or self.index == 1:
             stationary = [False for i in xrange(1,self.stationaryTolerance) \
             if self.observationHistory[-i].getAgentPosition(self.index) != gameState.getAgentPosition(self.index)]
 
@@ -261,16 +263,15 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     features['successorScore'] = -len(foodList)#self.getScore(successor)
 
     myPos = successor.getAgentState(self.index).getPosition()
-    '''
-    if action == Directions.STOP:
-        features['actionPenalty'] = -.5
-    '''
+
     numCarrying = gameState.getAgentState(self.index).numCarrying
     features['numCarrying'] = numCarrying
 
     distToSafe = self.findHome(myPos, gameState)
     features['distanceToSafe'] = distToSafe
 
+    if action == gameState.getAgentState(self.index).configuration.direction:
+         features['actionPenalty'] = .5 #ugly encouragment for same direction
 
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
     ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None and successor.getAgentState(self.index).isPacman]
@@ -344,7 +345,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
 
          if gtl[0][1].scaredTimer >= 5:
              # +.5 to head towards ghost if moving towards him from old pos
-             if gtl[0][0] < self.getMazeDistance(oldPos, closeGhost):
+             if gtl[0][0] < self.getMazeDistance(oldPos, closeGhost.getPosition()):
                baseScore += .5
 
          return baseScore
