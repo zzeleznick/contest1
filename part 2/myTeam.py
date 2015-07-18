@@ -206,7 +206,7 @@ class DummyAgent(CaptureAgent):
 
         return  successorScore
 
-def predictGhostMove(myPos, ghostPos):
+def predictGhostMove(myPos, ghostPos):  #TODO: NOTE: This actually doesn't work since it doesn't check validity of a move for the ghost
     '''
     Returns the expected position of the ghost
     :param myPos:
@@ -236,7 +236,7 @@ def predictGhostMove(myPos, ghostPos):
 
 
     elif myPos[1] == ghostPos[1]:
-        if myPos[0] < ghostPos[0]:  #as just 1, THIS was having issues with the autograder
+        if myPos[0] < ghostPos[0]:
              moves[Directions.WEST] = .9
              moves[Directions.STOP] = .1
         elif myPos[0] > ghostPos[0]:

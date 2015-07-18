@@ -1,0 +1,355 @@
+# curTeam.py
+# ---------
+# Licensing Information:  You are free to use or extend these projects for
+# educational purposes provided that (1) you do not distribute or publish
+# solutions, (2) you retain this notice, and (3) you provide clear
+# attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
+#
+# Attribution Information: The Pacman AI projects were developed at UC Berkeley.
+# The core projects and autograders were primarily created by John DeNero
+# (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
+# Student side autograding was added by Brad Miller, Nick Hay, and
+# Pieter Abbeel (pabbeel@cs.berkeley.edu).
+
+from captureAgents import CaptureAgent
+import distanceCalculator
+import random, time, util, sys
+from game import Directions
+import game
+from util import nearestPoint
+
+#################
+# Team creation #
+#################
+
+def createTeam(firstIndex, secondIndex, isRed,
+               first = 'OffensiveReflexAgent', second = 'DefensiveReflexAgent'):
+  """
+  This function should return a list of two agents that will form the
+  team, initialized using firstIndex and secondIndex as their agent
+  index numbers.  isRed is True if the red team is being created, and
+  will be False if the blue team is being created.
+
+  As a potentially helpful development aid, this function can take
+  additional string-valued keyword arguments ("first" and "second" are
+  such arguments in the case of this function), which will come from
+  the --redOpts and --blueOpts command-line arguments to capture.py.
+  For the nightly contest, however, your team will be created without
+  any extra arguments, so you should make sure that the default
+  behavior is what you want for the nightly contest.
+  """
+  return [eval(first)(firstIndex), eval(second)(secondIndex)]
+
+##########
+# Agents #
+##########
+
+class ReflexCaptureAgent(CaptureAgent):
+  """
+  A base class for reflex agents that chooses score-maximizing actions
+  """
+ 
+  def registerInitialState(self, gameState):
+    self.start = gameState.getAgentPosition(self.index)
+    CaptureAgent.registerInitialState(self, gameState)
+    self.debugging = True
+
+    "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
+    if self.red:
+        leftEdge = gameState.data.layout.width / 2
+        rightEdge =  gameState.data.layout.width - 2
+        self.safeColumn = leftEdge - 2
+    else:
+        leftEdge = 1
+        rightEdge = gameState.data.layout.width / 2
+        self.safeColumn = rightEdge + 2
+
+    self.safeSpaces = []
+    for h in xrange(1,gameState.data.layout.height-1):
+        if not gameState.data.layout.isWall((self.safeColumn, h)):
+               self.safeSpaces += [(self.safeColumn, h)]
+
+    print "Coloring my safe column white"
+    self.debugDraw([(self.safeColumn, el) for el in xrange(0, gameState.data.layout.height)], [1,1,1], clear=False)
+
+    print "Coloring my safe spaces", self.safeSpaces, "blue"
+    self.debugDraw(self.safeSpaces, [0,0,1], clear=False)
+
+  def findHome(self, pos, gameState):
+      '''
+      :param gameState:
+      :param pos: position
+      :return: The distance to closest safe space
+      '''
+      distToSafe = 9999
+      dest = self.start
+      bestDest = dest
+      dist = self.getMazeDistance(dest,pos)
+
+      for el in xrange(-2,4):
+        try:
+          idx = self.safeSpaces.index((self.safeColumn, pos[1] + el))
+          dest = self.safeSpaces[idx]
+          dist = self.getMazeDistance(dest,pos)
+          #print "possible destination at", dest
+        except ValueError:
+            pass
+            #print "X: ", (self.safeColumn, pos[1] + el), "not valid destination"
+        #print "Current destination to check at ", dest, "at dist:", dist
+        if dist < distToSafe:
+          distToSafe = dist
+          bestDest = dest
+
+      return distToSafe
+      #print "Found optimal safe space at", bestDest , "with dist", bestDist, "coloring spot now"
+      #print "Agent ", self.index, "Going", bestAction, "\n"
+      #self.debugDraw([bestDest], [1,1,0], clear=False)
+
+  def chooseAction(self, gameState):
+    """
+    Picks among the actions with the highest Q(s,a).
+    """
+    actions = gameState.getLegalActions(self.index)
+
+    # You can profile your evaluation time by uncommenting these lines
+    # start = time.time()
+    values = [self.evaluate(gameState, a) for a in actions]
+    # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
+
+    maxValue = max(values)
+    bestActions = [a for a, v in zip(actions, values) if v == maxValue]
+
+    foodLeft = len(self.getFood(gameState).asList())
+
+    if foodLeft <= 2:
+      bestDist = 9999
+      for action in actions:
+        successor = self.getSuccessor(gameState, action)  #returns a configuration (direction, position
+        pos2 = successor.getAgentPosition(self.index)
+        dist = self.findHome(self, pos2, gameState)
+        #self.getMazeDistance(self.start,pos2)
+        if dist < bestDist:
+          bestAction = action
+          bestDist = dist
+      return bestAction
+
+    return random.choice(bestActions)
+
+  def getSuccessor(self, gameState, action):
+    """
+    Finds the next successor which is a grid position (location tuple).
+    """
+    successor = gameState.generateSuccessor(self.index, action)
+    pos = successor.getAgentState(self.index).getPosition()
+    if pos != nearestPoint(pos):
+      # Only half a grid position was covered
+      return successor.generateSuccessor(self.index, action)
+    else:
+      return successor
+
+  def evaluate(self, gameState, action):
+    """
+    Computes a linear combination of features and feature weights
+    """
+    features = self.getFeatures(gameState, action)
+    weights = self.getWeights(gameState, action)
+    return features * weights
+
+  def getFeatures(self, gameState, action):
+    """
+    Returns a counter of features for the state
+    """
+    features = util.Counter()
+    successor = self.getSuccessor(gameState, action)
+    features['successorScore'] = self.getScore(successor)
+    return features
+
+  def getWeights(self, gameState, action):
+    """
+    Normally, weights do not depend on the gamestate.  They can be either
+    a counter or a dictionary.
+    """
+    return {'successorScore': 1.0}
+
+
+
+
+
+class OffensiveReflexAgent(ReflexCaptureAgent):
+  """
+  A reflex agent that seeks food. This is an agent
+  we give you to get an idea of what an offensive agent might look like,
+  but it is by no means the best or only way to build an offensive agent.
+  """
+  def getFeatures(self, gameState, action):
+    features = util.Counter()
+    successor = self.getSuccessor(gameState, action)
+    foodList = self.getFood(successor).asList()    
+    features['successorScore'] = -len(foodList)#self.getScore(successor)
+
+    myPos = successor.getAgentState(self.index).getPosition()
+
+    if action == Directions.STOP:
+        features['actionPenalty'] = -.5
+
+    numCarrying = gameState.getAgentState(self.index).numCarrying
+    features['numCarrying'] = numCarrying
+
+    distToSafe = self.findHome(myPos, gameState)
+    features['distanceToSafe'] = distToSafe
+
+
+    enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
+    ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None and successor.getAgentState(self.index).isPacman]
+    features['ghostDistance'] = self.ghostsToFeatureScore(ghosts, myPos, action, gameState)
+
+    # Compute distance to the nearest food
+    if len(foodList) > 0: # This should always be True,  but better safe than sorry
+      minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
+      features['distanceToFood'] = minDistance
+    return features
+
+  def ghostsToFeatureScore(self, ghosts, pos, action, gameState):
+      '''
+      Returns a score based on the distance from ghosts and current gameState
+      :param ghosts: an array of enemies who are ghosts
+      :param pos: our position
+      :param gameState: the gamestate
+      :return: a score
+      '''
+      ##assuming tight corridors, avoiding the ghost will be very tough
+      '''
+          .
+        g. p .   g
+
+      '''
+
+      if len(ghosts) > 0:
+         gtl = [(self.getMazeDistance(pos, a.getPosition()), a) for a in ghosts]
+         if gtl[0][0] > gtl[-1][0]:
+             tmp = gtl[0]
+             gtl[0] = gtl[-1]
+             gtl[-1] = tmp
+         #GhostTupleList
+         baseScore = min(-4 + gtl[0][0], 0)
+         if gtl[0][0] == 0:  #check to see if 1) ghost is scared  2) this is best option?
+             baseScore -= 100
+         elif gtl[0][0] <= 1:
+             if action == Directions.STOP:
+                 baseScore -= 100
+             pass
+         elif gtl[0][0] <= 4:
+             pass #might want to adjust -- defaulting to linear
+         else:   #ghost is 5 or more away
+             return 0
+
+         if gtl[0][1].scaredTimer >= 5:
+             # +.5 to head towards ghost if moving towards him from old pos
+             presentPos = gameState.getAgentState(self.index).getPosition()
+             if self.getMazeDistance(presentPos, gtl[0][1].getPosition()) < gtl[0][0]:
+               baseScore = .5
+
+         return baseScore
+
+      else:
+          return 0
+
+
+  def getWeights(self, gameState, action):
+    weights = util.Counter()
+    weights['successorScore'] = 100
+    weights['distanceToFood'] = -1
+    weights['actionPenalty'] = 1
+
+    if gameState.getAgentState(self.index).numCarrying > 0:
+        weights['distanceToSafe'] = -1.5
+        weights['ghostDistance'] = 1 # default to feature score for ghostDistance; else keep at 0
+    else:
+        weights['ghostDistance'] = .5
+    return weights
+
+class DefensiveReflexAgent(ReflexCaptureAgent):
+  """
+  A reflex agent that keeps its side Pacman-free. Again,
+  this is to give you an idea of what a defensive agent
+  could be like.  It is not the best or only way to make
+  such an agent.
+  """
+
+  def getFeatures(self, gameState, action):
+    features = util.Counter()
+    successor = self.getSuccessor(gameState, action)
+
+    myState = successor.getAgentState(self.index)
+    myPos = myState.getPosition()
+
+    # Computes whether we're on defense (1) or offense (0)
+    features['onDefense'] = 1
+    if myState.isPacman: features['onDefense'] = 0
+
+    # Computes distance to invaders we can see
+    enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
+    invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
+    features['numInvaders'] = len(invaders)
+    if len(invaders) > 0:
+      dists = [self.getMazeDistance(myPos, a.getPosition()) for a in invaders]
+      features['invaderDistance'] = min(dists)
+
+    if action == Directions.STOP: features['stop'] = 1
+    rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
+    if action == rev: features['reverse'] = 1
+
+    return features
+
+  def getWeights(self, gameState, action):
+    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2}
+
+'''
+          BIG QUESTION:
+             If pacman is pinned, should he move towards closest path to home or try a different path?
+
+          case 1a.
+          ___________
+          1_g___p____|  pacman is trapped. pacman should proceed towards safe space
+                        CLOSE EXIT
+
+          case 1b.
+          __
+          1 |_______    pacman has close exit blocked (1), but he can get to exit 2 faster than ghost
+          |_g_p__  |    Risky move to go close if ghost is behaving optimally, however could backtrack if ghost is not pursuing
+           ______| |    FAR EXIT
+          2________|
+
+          case 1c.
+          __
+           1|_______    pacman has close exit blocked (1), and he cannot get to exit 2 faster than ghost
+            g_p__  |    Could go towards ghost and exit, could try to wait it out at the halfway point
+           |_____| |
+          _2_______|    ???
+
+          **Becomes more complex with 2 ghosts**
+
+          case 2a.
+          ___________
+          1_g___p__g_|  pacman is trapped. pacman should proceed towards the exit and die
+                        CLOSE EXIT
+
+          case b.
+          __
+          1 |_______    pacman has close exit blocked (1) by close ghost, he can get to exit 2 faster than close ghost
+          |_g_p__  |    but the far exit is blocked by the far ghost
+           ______|g|    If the far ghost or close ghost is not acting optimally, small chance of escape
+          2________|    Should go towards a non-pursuing ghost or exit, branch point also big factor
+                        *** Also if capsule accessible ***
+                        ** Set a flag for isTrapped **
+                        EXIT
+
+
+          When does pacman decide to face defeat vs attempt run away?
+          1. Pacman should find his closest safe space.  <-- ideally escape route (safe space -> path)
+          2. If the ghost is blocking that escape route (e.g. ghost is closer): find next closest escape route
+          2b. Check if capsule in range
+
+               ?????
+
+'''
