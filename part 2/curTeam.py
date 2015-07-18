@@ -52,7 +52,7 @@ class ReflexCaptureAgent(CaptureAgent):
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
-    self.debugging = False
+    self.debugging = True
     self.stationaryTolerance = random.randint(6,16)
 
     "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
@@ -134,22 +134,42 @@ class ReflexCaptureAgent(CaptureAgent):
     reversedAction = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
     if reversedAction in bestActions:
         if self.debugging:
-            print "Hmmm. multiple best moves"
+            print "Hmmm. multiple best moves says", self.index, "including reverse"
         '''  ________
         exit ___p___.   possible scenario
 
         '''
     if len(bestActions) > 1:
+        newBestAction = bestActions[0]
+        dist = 9999
         for action in bestActions:
-            if action != Directions.STOP: #and not reversedAction:
-                return action
+             nextConfig = self.getSuccessor(gameState, action)  #returns a configuration (direction, position
+             nextPos = nextConfig.getAgentPosition(self.index)
+
+             if self.getState() == 'DEFENSE':
+                 distToSafe = self.findHome(nextPos,gameState)
+                 if distToSafe < dist:   # at a junction (e.g. go north or east)
+                    dist = distToSafe
+                    newBestAction = action
+
+             elif self.getState() == 'OFFENSE': #junction between going home or getting food
+                foodList = self.getFood(nextConfig).asList()
+                if len(foodList) > 0: # This should always be True,  but better safe than sorry
+                    minDistance = min([self.getMazeDistance(nextPos, food) for food in foodList])
+                    if minDistance < dist:
+                        dist = minDistance
+                        newBestAction = action
+
+        return newBestAction
+        '''
+            #if action != Directions.STOP: #and not reversedAction:
             else:
                 if self.debugging:
                     print "Agent", self.index, "thinks stop or reverse is a good idea from pos", gameState.getAgentPosition(self.index)
-                #if gameState.o
+        '''
     if len(bestActions) == 1:
         #if bestActions[0] == Directions.STOP:
-        if len(self.observationHistory) > self.stationaryTolerance and self.index == 0 or self.index == 1:
+        if len(self.observationHistory) > self.stationaryTolerance and (self.index == 0 or self.index == 1):
             stationary = [False for i in xrange(1,self.stationaryTolerance) \
             if self.observationHistory[-i].getAgentPosition(self.index) != gameState.getAgentPosition(self.index)]
 
@@ -256,6 +276,9 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
   we give you to get an idea of what an offensive agent might look like,
   but it is by no means the best or only way to build an offensive agent.
   """
+  def getState(self):
+      return 'OFFENSE'
+
   def getFeatures(self, gameState, action):
     features = util.Counter()
     successor = self.getSuccessor(gameState, action)
@@ -397,6 +420,8 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
   could be like.  It is not the best or only way to make
   such an agent.
   """
+  def getState(self):
+      return 'DEFENSE'
 
   def getFeatures(self, gameState, action):
     features = util.Counter()
@@ -407,20 +432,19 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
 
     # Computes whether we're on defense (1) or offense (0)
     features['onDefense'] = 1
+    if action == Directions.STOP: features['stop'] = 1
     #if myState.isPacman: features['onDefense'] = 0
     if self.red:
-        if myPos > self.safeColumn:
+        if myPos[0] > self.safeColumn or myState.isPacman:
             features['onDefense'] = 0
     else:
-        if myPos < self.safeColumn:
+        if myPos[0] < self.safeColumn or myState.isPacman:
             features['onDefense'] = 0
 
     # Computes distance to invaders we can see
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
     invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
     features['numInvaders'] = len(invaders)
-
-    if action == Directions.STOP: features['stop'] = 1
 
     if len(invaders) > 0:
       dists = [self.getMazeDistance(myPos, a.getPosition()) for a in invaders]
@@ -456,7 +480,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
 
           '''
 
-    else:  #allow reverse when there are invaders at no penalty
+    else:
         rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
         if action == rev: features['reverse'] = 1
 
@@ -470,7 +494,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     return features
 
   def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}
+    return {'numInvaders': -1000, 'onDefense': 200, 'invaderDistance': -10, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}
 
 
 '''
