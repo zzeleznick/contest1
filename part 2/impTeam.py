@@ -54,6 +54,7 @@ class ReflexCaptureAgent(CaptureAgent):
     CaptureAgent.registerInitialState(self, gameState)
     self.debugging = True
     self.stationaryTolerance = random.randint(6,16)
+    self.depth = 5
 
     "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
     if self.red:
@@ -101,6 +102,30 @@ class ReflexCaptureAgent(CaptureAgent):
       #print "Agent ", self.index, "Going", bestAction, "\n"
       #self.debugDraw([bestDest], [1,1,0], clear=False)
 
+  def maxValues(self, state, action, maxAgentId, minAgentId, depth, FIRST_CALL = False):
+        if depth > self.depth:
+        #if state.isWin() or state.isLose() or depth > self.depth:
+            return self.evaluate(state, action, minAgentId)
+        if state.getAgentPosition(self.index) == (10,5):
+            pass
+        if FIRST_CALL: actions = [action]
+        else: actions = state.getLegalActions(maxAgentId)
+
+        nextActionStatePairs = [ (state.generateSuccessor(maxAgentId, a), a) for a in actions]
+        #I suppose generate successor really does udate the gameboard...
+        return max( [ self.minValues(s[0], s[1], maxAgentId, minAgentId, depth + 1) for s in nextActionStatePairs] )
+
+
+  def minValues(self, state, action, maxAgentId, minAgentId, depth):
+        if depth > self.depth:
+        #if state.isWin() or state.isLose() or depth > self.depth:
+            return self.evaluate(state, action)
+        actions = state.getLegalActions(minAgentId)
+        nextActionStatePairs = [ (state.generateSuccessor(minAgentId, a), a) for a in actions]
+        #I suppose generate successor really does udate the gameboard...
+        return min( [ self.maxValues(s[0], s[1], maxAgentId, minAgentId, depth + 1) for s in nextActionStatePairs] )
+
+
   def chooseAction(self, gameState):
     """
     Picks among the actions with the highest Q(s,a).
@@ -138,8 +163,9 @@ class ReflexCaptureAgent(CaptureAgent):
     if len(bestActions) > 1:
         newBestAction = bestActions[0]
         dist = 9999
-        for action in bestActions:
-             nextConfig = self.getSuccessor(gameState, action)  #returns a configuration (direction, position
+        bestScore = -9999
+        for option in bestActions:
+             nextConfig = self.getSuccessor(gameState, option)  #returns a configuration (direction, position
              nextPos = nextConfig.getAgentPosition(self.index)
 
              if self.getState() == 'DEFENSE':
@@ -149,17 +175,23 @@ class ReflexCaptureAgent(CaptureAgent):
                     foodDist = min([self.getMazeDistance(nextPos, food) for food in foodList])
                  if distToSafe + .75 *foodDist <= dist:   # at a junction (e.g. go north or east)
                     dist = distToSafe + .75 *foodDist
-                    newBestAction = action
+                    newBestAction = option
 
              elif self.getState() == 'OFFENSE': #junction between going home or getting food
-                #'''
+                enemyDists = [(self.getMazeDistance(nextPos, gameState.getAgentState(i).getPosition()), i) for i in self.getOpponents(gameState)]
+                minAgentId = min(enemyDists)[1]
+                score = self.maxValues(gameState, option, self.index, minAgentId, 0, FIRST_CALL = True)
+                if score > bestScore:
+                    bestScore = score
+                    newBestAction = option
+                '''
                 foodList = self.getFood(nextConfig).asList()
                 if len(foodList) > 0: # This should always be True,  but better safe than sorry
                     minDistance = min([self.getMazeDistance(nextPos, food) for food in foodList])
                     if minDistance < dist:
                         dist = minDistance
                         newBestAction = action
-                #''' 
+                '''
 
         return newBestAction
 
@@ -190,29 +222,17 @@ class ReflexCaptureAgent(CaptureAgent):
     else:
       return successor
 
-  def evaluate(self, gameState, action):
+  def evaluate(self, gameState, action, EID = False):  #E_E : enemy id
     """
     Computes a linear combination of features and feature weights
     """
-    features = self.getFeatures(gameState, action)
+    #print "Passing in GS, action", action, "and EE", EID
+    try:
+        features = self.getFeatures(gameState, action, EID)
+    except:
+        features = util.Counter()
     weights = self.getWeights(gameState, action)
     return features * weights
-
-  def getFeatures(self, gameState, action):
-    """
-    Returns a counter of features for the state
-    """
-    features = util.Counter()
-    successor = self.getSuccessor(gameState, action)
-    features['successorScore'] = self.getScore(successor)
-    return features
-
-  def getWeights(self, gameState, action):
-    """
-    Normally, weights do not depend on the gamestate.  They can be either
-    a counter or a dictionary.
-    """
-    return {'successorScore': 1.0}
 
   def trappedOpponent(self, pos, invaders, gameState):
     '''
@@ -275,9 +295,16 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
   def getState(self):
       return 'OFFENSE'
 
-  def getFeatures(self, gameState, action):
+  def getFeatures(self, gameState, action, EID = False): #E is enemy id otherwise
     features = util.Counter()
-    successor = self.getSuccessor(gameState, action)
+
+    if  EID:
+        print "Enemy eval activated"
+        #successor = gameState.generateSuccessor(EID, action)  #gamestate already updated from minimax
+        successor = gameState
+    else:
+        successor = self.getSuccessor(gameState, action)
+
     foodList = self.getFood(successor).asList()
     features['successorScore'] = -len(foodList)#self.getScore(successor)
 
@@ -289,7 +316,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     distToSafe = self.findHome(myPos, gameState)
     features['distanceToSafe'] = distToSafe
 
-    if action == gameState.getAgentState(self.index).configuration.direction:
+    if action == gameState.getAgentState(self.index).configuration.direction and not  EID:
          features['actionPenalty'] = .5 #ugly encouragment for same direction
 
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
@@ -419,7 +446,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
   def getState(self):
       return 'DEFENSE'
 
-  def getFeatures(self, gameState, action):
+  def getFeatures(self, gameState, action, EID = False):
     features = util.Counter()
     successor = self.getSuccessor(gameState, action)
 
