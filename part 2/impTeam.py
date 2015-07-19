@@ -52,9 +52,9 @@ class ReflexCaptureAgent(CaptureAgent):
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
-    self.debugging = True
+    self.debugging = False
     self.stationaryTolerance = random.randint(6,16)
-    self.depth = 5
+    self.depth = 6
 
     "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
     if self.red:
@@ -102,28 +102,38 @@ class ReflexCaptureAgent(CaptureAgent):
       #print "Agent ", self.index, "Going", bestAction, "\n"
       #self.debugDraw([bestDest], [1,1,0], clear=False)
 
-  def maxValues(self, state, action, maxAgentId, minAgentId, depth, FIRST_CALL = False):
+  def maxValues(self, state, action, minAgentId, depth, FIRST_CALL = False):
         if depth > self.depth:
         #if state.isWin() or state.isLose() or depth > self.depth:
             return self.evaluate(state, action, minAgentId)
-        if state.getAgentPosition(self.index) == (10,5):
-            pass
+        elif self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) == 0:
+            return -99999
         if FIRST_CALL: actions = [action]
-        else: actions = state.getLegalActions(maxAgentId)
+        else: actions = state.getLegalActions(self.index)
 
-        nextActionStatePairs = [ (state.generateSuccessor(maxAgentId, a), a) for a in actions]
+        try:
+            nextActionStatePairs = [ (state.generateSuccessor(self.index, a), a) for a in actions]
+        except:
+            pass
         #I suppose generate successor really does udate the gameboard...
-        return max( [ self.minValues(s[0], s[1], maxAgentId, minAgentId, depth + 1) for s in nextActionStatePairs] )
+        return max( [ self.minValues(s[0], s[1], minAgentId, depth + 1) for s in nextActionStatePairs] )
 
 
-  def minValues(self, state, action, maxAgentId, minAgentId, depth):
+  def minValues(self, state, action, minAgentId, depth):
         if depth > self.depth:
         #if state.isWin() or state.isLose() or depth > self.depth:
             return self.evaluate(state, action)
-        actions = state.getLegalActions(minAgentId)
-        nextActionStatePairs = [ (state.generateSuccessor(minAgentId, a), a) for a in actions]
+        elif self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) == 0:
+            return -99999
+        if self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) > 5:
+            actions = [ random.choice(state.getLegalActions(minAgentId)) ]
+        else: actions = state.getLegalActions(minAgentId)
+        try:
+            nextActionStatePairs = [ (state.generateSuccessor(minAgentId, a), a) for a in actions]
+        except:
+            pass
         #I suppose generate successor really does udate the gameboard...
-        return min( [ self.maxValues(s[0], s[1], maxAgentId, minAgentId, depth + 1) for s in nextActionStatePairs] )
+        return min( [ self.maxValues(s[0], s[1], minAgentId, depth + 1) for s in nextActionStatePairs] )
 
 
   def chooseAction(self, gameState):
@@ -180,7 +190,7 @@ class ReflexCaptureAgent(CaptureAgent):
              elif self.getState() == 'OFFENSE': #junction between going home or getting food
                 enemyDists = [(self.getMazeDistance(nextPos, gameState.getAgentState(i).getPosition()), i) for i in self.getOpponents(gameState)]
                 minAgentId = min(enemyDists)[1]
-                score = self.maxValues(gameState, option, self.index, minAgentId, 0, FIRST_CALL = True)
+                score = self.maxValues(gameState, option, minAgentId, 0, FIRST_CALL = True)
                 if score > bestScore:
                     bestScore = score
                     newBestAction = option
@@ -300,10 +310,15 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
 
     if  EID:
         print "Enemy eval activated"
-        #successor = gameState.generateSuccessor(EID, action)  #gamestate already updated from minimax
+        #successor = gameState.generateSuccessor(EID, action)
+        # #gamestate already updated from minimax (passed from max values)
         successor = gameState
     else:
-        successor = self.getSuccessor(gameState, action)
+        try:
+             successor = self.getSuccessor(gameState, action)
+        except:
+             successor = gameState  #passed from minValues
+
 
     foodList = self.getFood(successor).asList()
     features['successorScore'] = -len(foodList)#self.getScore(successor)
