@@ -125,6 +125,7 @@ class ReflexCaptureAgent(CaptureAgent):
             return self.evaluate(state, action)
         elif self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) == 0:
             return -99999
+        '''
         if self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) > 5:
             actions = [ random.choice(state.getLegalActions(minAgentId)) ]
         else: actions = state.getLegalActions(minAgentId)
@@ -132,8 +133,19 @@ class ReflexCaptureAgent(CaptureAgent):
             nextActionStatePairs = [ (state.generateSuccessor(minAgentId, a), a) for a in actions]
         except:
             pass
-        #I suppose generate successor really does udate the gameboard...
-        return min( [ self.maxValues(s[0], s[1], minAgentId, depth + 1) for s in nextActionStatePairs] )
+
+        '''
+        goodPos = state.getAgentPosition(self.index)
+        actions = state.getLegalActions(minAgentId)
+        nextActionStatePairs = []
+        for a in actions:
+            try:
+                nextActionStatePairs += [ (state.generateSuccessor(minAgentId, a), a) ]
+            except:
+                pass #safety hopefully?
+        distancesToMe = [ (self.getMazeDistance(goodPos, ns[0].getAgentPosition(minAgentId)), ns) for ns in nextActionStatePairs]
+        minDist = min(distancesToMe)[0]
+        return min( [ self.maxValues(s[1][0], s[1][1], minAgentId, depth + 1) for s in distancesToMe if s[0] == minDist] )
 
 
   def chooseAction(self, gameState):
