@@ -290,10 +290,6 @@ class ReflexCaptureAgent(CaptureAgent):
         return False  #should not be called otherwise
 
     closerInvader = invaders[0]
-
-    if closerInvader.numCarrying == 0:
-        return False # just chase him?
-
     sep = self.getMazeDistance(pos, closerInvader.getPosition())
     if self.getMazeDistance(pos, invaders[-1].getPosition()) < sep:
          closerInvader = invaders[-1]
