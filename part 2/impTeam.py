@@ -125,6 +125,7 @@ class ReflexCaptureAgent(CaptureAgent):
             return self.evaluate(state, action)
         elif self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) == 0:
             return -99999
+
         '''
         if self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) > 5:
             actions = [ random.choice(state.getLegalActions(minAgentId)) ]
@@ -136,7 +137,9 @@ class ReflexCaptureAgent(CaptureAgent):
 
         '''
         goodPos = state.getAgentPosition(self.index)
-        actions = state.getLegalActions(minAgentId)
+        if self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) > 10:
+            actions = [ random.choice(state.getLegalActions(minAgentId)) ]
+        else: actions = state.getLegalActions(minAgentId)
         nextActionStatePairs = []
         for a in actions:
             try:
@@ -160,7 +163,20 @@ class ReflexCaptureAgent(CaptureAgent):
         successor = self.getSuccessor(gameState, action)  #returns a configuration (direction, position
         pos2 = successor.getAgentPosition(self.index)
         dist = self.findHome(pos2, gameState)
-        #self.getMazeDistance(self.start,pos2)
+        enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
+        ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None] #and successor.getAgentState(self.index).isPacman]
+        try:
+            minDistance = min([self.getMazeDistance(pos2, g.getPosition()) for g in ghosts])
+        except:
+            minDistance = 2
+        if action == Directions.STOP:
+            dist += .5
+        if minDistance == 0:
+            dist += 900 #don't get killed!
+            print "I am going to kill myself with action", action, "from position", gameState.getAgentPosition(self.index)
+        elif minDistance <= 1:
+            dist += 100 #don't get killed!
+            print "I am going to kill myself with action", action, "from position", gameState.getAgentPosition(self.index)
         if dist < bestDist:
           bestAction = action
           bestDist = dist
@@ -244,13 +260,13 @@ class ReflexCaptureAgent(CaptureAgent):
     else:
       return successor
 
-  def evaluate(self, gameState, action, EID = False):  #E_E : enemy id
+  def evaluate(self, gameState, action, MM_ID = False):  #MM_ID if passed from mini-max
     """
     Computes a linear combination of features and feature weights
     """
     #print "Passing in GS, action", action, "and EE", EID
     try:
-        features = self.getFeatures(gameState, action, EID)
+        features = self.getFeatures(gameState, action, MM_ID)
     except:
         features = util.Counter()
     weights = self.getWeights(gameState, action)
@@ -317,13 +333,13 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
   def getState(self):
       return 'OFFENSE'
 
-  def getFeatures(self, gameState, action, EID = False): #E is enemy id otherwise
+  def getFeatures(self, gameState, action, MM_ID = False): #MM_ID: IF eval passed from gamestate
     features = util.Counter()
 
-    if  EID:
-        print "Enemy eval activated"
+    if  MM_ID:
+        print "Eval Passed from Minimax"
         #successor = gameState.generateSuccessor(EID, action)
-        # #gamestate already updated from minimax (passed from max values)
+        # #gamestate already updated from minimax
         successor = gameState
     else:
         try:
@@ -334,17 +350,21 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
 
     foodList = self.getFood(successor).asList()
     features['successorScore'] = -len(foodList)#self.getScore(successor)
-
     myPos = successor.getAgentState(self.index).getPosition()
 
     numCarrying = gameState.getAgentState(self.index).numCarrying
     features['numCarrying'] = numCarrying
+    features['scoreChange'] = gameState.data.scoreChange + numCarrying
+
 
     distToSafe = self.findHome(myPos, gameState)
     features['distanceToSafe'] = distToSafe
 
-    if action == gameState.getAgentState(self.index).configuration.direction and not  EID:
-         features['actionPenalty'] = .5 #ugly encouragment for same direction
+    if not MM_ID or MM_ID != self.index:
+        if action == gameState.getAgentState(self.index).configuration.direction:
+            features['actionBonus'] += .5 #ugly encouragment for same direction
+        if action != Directions.STOP:
+            features['actionBonus'] += .5
 
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
     ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None and successor.getAgentState(self.index).isPacman]
@@ -408,7 +428,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                 pass
          else:
              if gtl[0][0] == 0:  #check to see if 1) ghost is scared  2) this is best option?
-                 baseScore -= 100
+                 baseScore -= 900
              elif gtl[0][0] == 1:  #allow enemy to eat -- no!
                  baseScore -= 100
              elif gtl[0][0] <= 4:  #Here is the real challenge. Can we recognize our demise
@@ -431,8 +451,8 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     weights = util.Counter()
     weights['successorScore'] = 100
     weights['distanceToFood'] = -1
-    weights['actionPenalty'] = 1  #will prune stop from choose action
-
+    weights['actionBonus'] = 1  #will prune stop from choose action
+    weights['scoreChange'] = 50
 
     '''
     # pac has eaten one dot and now must choose whether to eat more dots or return home
