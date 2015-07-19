@@ -48,7 +48,7 @@ class ReflexCaptureAgent(CaptureAgent):
   """
   A base class for reflex agents that chooses score-maximizing actions
   """
- 
+
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
@@ -89,16 +89,12 @@ class ReflexCaptureAgent(CaptureAgent):
       :return: The distance to closest safe space
       '''
       distToSafe = 9999
-      dest = self.start
-      #bestDest = dest
-      #distToSafe = self.getMazeDistance(dest,pos)
 
       for space in self.safeSpaces:
         dist = self.getMazeDistance(space,pos)
         #print "Current destination to check at ", dest, "at dist:", dist
         if dist < distToSafe:
           distToSafe = dist
-          bestDest = dest
 
       return distToSafe
       #print "Found optimal safe space at", bestDest , "with dist", bestDist, "coloring spot now"
@@ -156,12 +152,14 @@ class ReflexCaptureAgent(CaptureAgent):
                     newBestAction = action
 
              elif self.getState() == 'OFFENSE': #junction between going home or getting food
+                #'''
                 foodList = self.getFood(nextConfig).asList()
                 if len(foodList) > 0: # This should always be True,  but better safe than sorry
                     minDistance = min([self.getMazeDistance(nextPos, food) for food in foodList])
                     if minDistance < dist:
                         dist = minDistance
                         newBestAction = action
+                #''' 
 
         return newBestAction
 
@@ -280,7 +278,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
   def getFeatures(self, gameState, action):
     features = util.Counter()
     successor = self.getSuccessor(gameState, action)
-    foodList = self.getFood(successor).asList()    
+    foodList = self.getFood(successor).asList()
     features['successorScore'] = -len(foodList)#self.getScore(successor)
 
     myPos = successor.getAgentState(self.index).getPosition()
@@ -482,17 +480,31 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
         rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
         if action == rev: features['reverse'] = 1
 
+        ourFood = self.getFoodYouAreDefending(gameState).asList()
+        foodDists1 = [(self.getMazeDistance(enemies[0].getPosition(), food), food) for food in ourFood]
+        foodDists2 = [(self.getMazeDistance(enemies[-1].getPosition(), food), food) for food in ourFood]
+        #eDist1 = self.getMazeDistance(myPos, enemies[0].getPosition())
+        #eDist2 = self.getMazeDistance(myPos, enemies[-1].getPosition())
+        fd1 = min(foodDists1)
+        fd2 = min(foodDists2)
+        if fd1 < fd2:
+           closeFood = fd1[1]
+        else:
+           closeFood = fd2[1]
+
+        features['foodDistance'] = self.getMazeDistance(myPos,closeFood)
+        '''
         capsules = self.getCapsulesYouAreDefending(gameState)
         if len(capsules) > 0:
             dists = [self.getMazeDistance(myPos, c) for c in capsules]
             features['capsuleDistance'] = min(dists)
             if action == Directions.STOP: features['stop'] = 0 ##allow squatting
-
+        '''
 
     return features
 
   def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 200, 'invaderDistance': -10, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}
+    return {'numInvaders': -1000, 'onDefense': 200, 'invaderDistance': -10, 'foodDistance': -10, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}
 
 
 '''

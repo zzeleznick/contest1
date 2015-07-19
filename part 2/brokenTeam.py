@@ -90,8 +90,8 @@ class ReflexCaptureAgent(CaptureAgent):
       '''
       distToSafe = 9999
       dest = self.start
-      #bestDest = dest
-      #distToSafe = self.getMazeDistance(dest,pos)
+      bestDest = dest
+      distToSafe = self.getMazeDistance(dest,pos)
 
       for space in self.safeSpaces:
         dist = self.getMazeDistance(space,pos)
@@ -117,7 +117,6 @@ class ReflexCaptureAgent(CaptureAgent):
         successor = self.getSuccessor(gameState, action)  #returns a configuration (direction, position
         pos2 = successor.getAgentPosition(self.index)
         dist = self.findHome(pos2, gameState)
-        #self.getMazeDistance(self.start,pos2)
         if dist < bestDist:
           bestAction = action
           bestDist = dist
@@ -180,15 +179,18 @@ class ReflexCaptureAgent(CaptureAgent):
                   return Directions.WEST
     return random.choice(bestActions)
 
-  def getSuccessor(self, gameState, action):
+  def getSuccessor(self, gameState, action, alternateId = None):
     """
     Finds the next successor which is a grid position (location tuple).
     """
-    successor = gameState.generateSuccessor(self.index, action)
-    pos = successor.getAgentState(self.index).getPosition()
+    if alternateId: id = alternateId
+    else: id = self.index
+
+    successor = gameState.generateSuccessor(id, action)
+    pos = successor.getAgentState(id).getPosition()
     if pos != nearestPoint(pos):
       # Only half a grid position was covered
-      return successor.generateSuccessor(self.index, action)
+      return successor.generateSuccessor(id, action)
     else:
       return successor
 
@@ -220,7 +222,7 @@ class ReflexCaptureAgent(CaptureAgent):
     '''
     Returns true if this agent is closer to all of the opponent's safe spaces
     :param pos: our position
-    :param invaders: invading enemies (a list)
+    :param invaders: invading enemies (a list) of agent states
     :param gameState:
     :return:
     '''
@@ -238,8 +240,8 @@ class ReflexCaptureAgent(CaptureAgent):
     opPos = closerInvader.getPosition()
     #dist = self.getMazeDistance(dest, opPos)
 
-    if self.debugging:
-            print "* Agent ", self.index, "Examining if we are trapping an invader"
+    #if self.debugging:
+    #        print "* Agent ", self.index, "Examining if we are trapping an invader"
     for space in self.opSafeSpaces:
         if self.getMazeDistance(pos,space) >= self.getMazeDistance(opPos,space):
             return False
@@ -247,25 +249,46 @@ class ReflexCaptureAgent(CaptureAgent):
             print "** Agent ", self.index, "Believes we have trapped opp located  at", opPos
     return True
 
-  def trapped(self, pos, trapper, gameState):
+  def trapped(self, pos, enemyPos, gameState):
     '''
     Returns true if this agent is closer to all of the opponent's safe spaces
     :param pos: our position
-    :param trapper: identity of the opponent who is trapping us
+    :param enemyPos: location of the opponent who is trapping us
     :param gameState:
     '''
     ## assume at most we will be 6 away from the ghost we are trying to trap, and only count the closer one for now
-    opPos = trapper.getPosition()
+    opPos = enemyPos
     sep = self.getMazeDistance(pos, opPos)
-
+    if not gameState.getAgentState(self.index).isPacman:
+        return False
     if self.debugging:
             print "* Agent ", self.index, "Examining if we have been trapped by enemy"
     for space in self.safeSpaces:
         if self.getMazeDistance(pos,space) < self.getMazeDistance(opPos,space):
             return False
     if self.debugging:
-            print "** Agent ", self.index, "Believes we have been trapped opp located  at", opPos
+            print "** Agent ", self.index, "Believes we have been trapped by opp located  at", opPos
     return True
+
+  def predictNewEnemyPos(self, pos, ghostId, gameState):
+      '''
+      Return the theorized move for a ghost given your position
+      :param pos:
+      :param ghostId: id of ghost in question
+      :gameState:
+      :return:
+      '''
+      actions = gameState.getLegalActions(ghostId)
+      bestDist = 9999
+      newEnemPos = gameState.getAgentPosition(ghostId)
+      for action in actions:
+        successor = self.getSuccessor(gameState, action, alternateId = ghostId)  #returns a configuration (direction, position
+        oppNextPos = successor.getAgentPosition(ghostId)
+        dist = self.getMazeDistance(pos, oppNextPos)
+        if dist < bestDist:
+             newEnemPos = oppNextPos
+             bestDist = dist
+      return newEnemPos
 
 
 class OffensiveReflexAgent(ReflexCaptureAgent):
@@ -294,8 +317,14 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     if action == gameState.getAgentState(self.index).configuration.direction:
          features['actionPenalty'] = .5 #ugly encouragment for same direction
 
-    enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
-    ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None and successor.getAgentState(self.index).isPacman]
+    enemyA = {'id': self.getOpponents(successor)[0], 'state': successor.getAgentState(self.getOpponents(successor)[0])}
+    enemyB= {'id': self.getOpponents(successor)[-1], 'state': successor.getAgentState(self.getOpponents(successor)[-1])}
+    #enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
+    ghosts = []
+    if enemyA['state'].isPacman and enemyA['state'].getPosition() != None: ghosts += [enemyA]
+    if enemyB['state'].isPacman and enemyB['state'].getPosition() != None: ghosts += [enemyB]
+    #ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None and successor.getAgentState(self.index).isPacman]
+
     features['ghostDistance'] = self.ghostsToFeatureScore(ghosts, myPos, action, gameState)
 
     # Compute distance to the nearest food
@@ -308,6 +337,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
       '''
       Returns a score based on the distance from ghosts and current gameState
       :param ghosts: an array of enemies who are ghosts
+       e.g. [ {'id' = 2, 'state' = enemyState} ]
       :param pos: our position
       :param gameState: the gamestate
       :return: a score
@@ -328,45 +358,68 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
          p|
 
       '''
-
       if len(ghosts) > 0:
-         gtl = [(self.getMazeDistance(pos, a.getPosition()), a) for a in ghosts]
+         gtl = [(self.getMazeDistance(pos, a['state'].getPosition()), a['id']) for a in ghosts]
+         # now sort by relative location
          if gtl[0][0] > gtl[-1][0]:
              tmp = gtl[0]
              gtl[0] = gtl[-1]
              gtl[-1] = tmp
 
          #GhostTupleList <- gtl (closest ghost that can hurt us
-         closeGhost =  gtl[0][1]
-         baseScore = min(-4 + gtl[0][0], 0)
+         closeGhostID =  gtl[0][1]
+         closeGhostDist =  gtl[0][0]
+         baseScore = min(-4 + closeGhostDist, 0)
          '''
              _____
              x_o._|
 
          '''
          oldPos = gameState.getAgentState(self.index).getPosition()
+         #closeGhostPos = self.predictNewEnemyPos(pos, closeGhostID , gameState)
+         closeGhostPos = gameState.getAgentState(closeGhostID).getPosition()
 
-         if self.trapped(pos, closeGhost, gameState):
+         if True == False:
+         #if self.trapped(pos, closeGhostPos, gameState):
             #generally this is a very bad move
             baseScore -= 50
+            '''
+            if closeGhostDist <= 1:  #allow enemy to eat -- no!
+                 baseScore -= 75
+
+            hope =[ space for space in self.safeSpaces if self.getMazeDistance(oldPos, space) > self.getMazeDistance(pos, space)]
+            if len(hope) > 0:  #should always be true (can head to close perilous exit, but the other?
+                baseScore += 80 #encourage movement towards an exit
+                if len(hope) > 1:
+                    baseScore += 10 #run to far exit?
+                #can be heading away from our closer exit (- points) and could gain points for increasing ghost separation
+                #encourage not just separation, but another exit
+             '''
+            ''' ________
+                __g_p __|
+                ___| |
+                _____|
+                '''
+            '''
             if self.findHome(pos, gameState) < self.findHome(oldPos, gameState):
-                baseScore += 1  #heading home
+                baseScore += 1  #just head to closest home (into certain peril)
             else:
                 # we are running away or stopping which seems futile
                 pass
+            '''
          else:
-             if gtl[0][0] == 0:  #check to see if 1) ghost is scared  2) this is best option?
+             if closeGhostDist == 0:  #check to see if 1) ghost is scared  2) this is best option?
                  baseScore -= 100
-             elif gtl[0][0] == 1:  #allow enemy to eat -- no!
+             elif closeGhostDist == 1:  #allow enemy to eat -- no!
                  baseScore -= 100
-             elif gtl[0][0] <= 4:  #Here is the real challenge. Can we recognize our demise
+             elif closeGhostDist <= 4:  #Here is the real challenge. Can we recognize our demise
                  pass
              else:   #ghost is 5 or more away
                  return 0
 
-         if gtl[0][1].scaredTimer >= 5:
+         if gameState.getAgentState(closeGhostID).scaredTimer >= 5:
              # +.5 to head towards ghost if moving towards him from old pos
-             if gtl[0][0] < self.getMazeDistance(oldPos, closeGhost.getPosition()):
+             if closeGhostDist < self.getMazeDistance(oldPos, gameState.getAgentState(closeGhostID).getPosition()):
                baseScore += .5
 
          return baseScore
