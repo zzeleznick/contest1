@@ -163,6 +163,9 @@ class ReflexCaptureAgent(CaptureAgent):
         successor = self.getSuccessor(gameState, action)  #returns a configuration (direction, position
         pos2 = successor.getAgentPosition(self.index)
         dist = self.findHome(pos2, gameState)
+        if pos2 == self.start:
+            dist += 900 #don't get killed!
+            print "I am would have killed myself with action", action, "from position", gameState.getAgentPosition(self.index)
         enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
         ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None] #and successor.getAgentState(self.index).isPacman]
         try:
@@ -171,12 +174,14 @@ class ReflexCaptureAgent(CaptureAgent):
             minDistance = 2
         if action == Directions.STOP:
             dist += .5
+        '''
         if minDistance == 0:
             dist += 900 #don't get killed!
             print "I am going to kill myself with action", action, "from position", gameState.getAgentPosition(self.index)
-        elif minDistance <= 1:
+        '''
+        if minDistance <= 1:
             dist += 100 #don't get killed!
-            print "I am going to kill myself with action", action, "from position", gameState.getAgentPosition(self.index)
+            print "I am at risk to kill myself with action", action, "from position", gameState.getAgentPosition(self.index)
         if dist < bestDist:
           bestAction = action
           bestDist = dist
