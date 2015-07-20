@@ -55,18 +55,19 @@ class ReflexCaptureAgent(CaptureAgent):
     self.debugging = False
     self.stationaryTolerance = random.randint(6,16)
     self.depth = 6
+    self.foodTarget = None
 
     "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
     if self.red:
         leftEdge = gameState.data.layout.width / 2
         rightEdge =  gameState.data.layout.width - 2
-        self.safeColumn = leftEdge - 2
-        self.opSafeColumn = leftEdge + 2
+        self.safeColumn = leftEdge - 1
+        self.opSafeColumn = leftEdge
     else:
         leftEdge = 1
         rightEdge = gameState.data.layout.width / 2
-        self.safeColumn = rightEdge + 2
-        self.opSafeColumn = rightEdge - 2
+        self.safeColumn = rightEdge
+        self.opSafeColumn = rightEdge - 1
 
     self.safeSpaces = []
     self.opSafeSpaces = []
@@ -126,16 +127,6 @@ class ReflexCaptureAgent(CaptureAgent):
         elif self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) == 0:
             return -99999
 
-        '''
-        if self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) > 5:
-            actions = [ random.choice(state.getLegalActions(minAgentId)) ]
-        else: actions = state.getLegalActions(minAgentId)
-        try:
-            nextActionStatePairs = [ (state.generateSuccessor(minAgentId, a), a) for a in actions]
-        except:
-            pass
-
-        '''
         goodPos = state.getAgentPosition(self.index)
         if self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) > 10:
             actions = [ random.choice(state.getLegalActions(minAgentId)) ]
@@ -157,6 +148,7 @@ class ReflexCaptureAgent(CaptureAgent):
     """
     actions = gameState.getLegalActions(self.index)
     foodLeft = len(self.getFood(gameState).asList())
+
     if foodLeft <= 2:
       bestDist = 9999
       for action in actions:
@@ -174,11 +166,7 @@ class ReflexCaptureAgent(CaptureAgent):
             minDistance = 2
         if action == Directions.STOP:
             dist += .5
-        '''
-        if minDistance == 0:
-            dist += 900 #don't get killed!
-            print "I am going to kill myself with action", action, "from position", gameState.getAgentPosition(self.index)
-        '''
+
         if minDistance <= 1:
             dist += 100 #don't get killed!
             print "I am at risk to kill myself with action", action, "from position", gameState.getAgentPosition(self.index)
@@ -190,19 +178,26 @@ class ReflexCaptureAgent(CaptureAgent):
 
     # You can profile your evaluation time by uncommenting these lines
     # start = time.time()
+    bestScore = -9999
+    bestAction = actions[0]
+    pos = gameState.getAgentPosition(self.index)
+    enemyDists = [(self.getMazeDistance(pos, gameState.getAgentState(i).getPosition()), i) for i in self.getOpponents(gameState)]
+    minAgentId = min(enemyDists)[1]
+    for action in actions:
+        score = self.maxValues(gameState, action, minAgentId, 0, FIRST_CALL = True)
+        if score > bestScore:
+            bestScore = score
+            bestAction = action
+
+    return bestAction
+
+    '''
     values = [self.evaluate(gameState, a) for a in actions]
     # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
 
     maxValue = max(values)
     bestActions = [a for a, v in zip(actions, values) if v == maxValue]
-    reversedAction = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
-    if reversedAction in bestActions:
-        if self.debugging:
-            print "Hmmm. multiple best moves says", self.index, "including reverse"
-        '''  ________
-        exit ___p___.   possible scenario
 
-        '''
     if len(bestActions) > 1:
         newBestAction = bestActions[0]
         dist = 9999
@@ -227,14 +222,6 @@ class ReflexCaptureAgent(CaptureAgent):
                 if score > bestScore:
                     bestScore = score
                     newBestAction = option
-                '''
-                foodList = self.getFood(nextConfig).asList()
-                if len(foodList) > 0: # This should always be True,  but better safe than sorry
-                    minDistance = min([self.getMazeDistance(nextPos, food) for food in foodList])
-                    if minDistance < dist:
-                        dist = minDistance
-                        newBestAction = action
-                '''
 
         return newBestAction
 
@@ -252,6 +239,7 @@ class ReflexCaptureAgent(CaptureAgent):
               elif self.red and Directions.WEST in actions:
                   return Directions.WEST
     return random.choice(bestActions)
+    '''
 
   def getSuccessor(self, gameState, action):
     """
@@ -290,10 +278,10 @@ class ReflexCaptureAgent(CaptureAgent):
         return False  #should not be called otherwise
 
     closerInvader = invaders[0]
-    '''
+
     if closerInvader.numCarrying == 0:
         return False # just chase him?
-    '''
+
     sep = self.getMazeDistance(pos, closerInvader.getPosition())
     if self.getMazeDistance(pos, invaders[-1].getPosition()) < sep:
          closerInvader = invaders[-1]
@@ -351,23 +339,32 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         # #gamestate already updated from minimax
         successor = gameState
     else:
+
         try:
              successor = self.getSuccessor(gameState, action)
         except:
-             successor = gameState  #passed from minValues
-
+            successor = gameState  #passed from minValues
+            #print "Likely passed from minimax"
 
     foodList = self.getFood(successor).asList()
-    features['successorScore'] = -len(foodList)#self.getScore(successor)
+    features['foodLeft'] = -len(foodList)
+    capsules = self.getCapsules(successor)
+    features['capsulesLeft'] = -len(capsules)
     myPos = successor.getAgentState(self.index).getPosition()
-
     numCarrying = gameState.getAgentState(self.index).numCarrying
     features['numCarrying'] = numCarrying
-    features['scoreChange'] = gameState.data.scoreChange + numCarrying
-
+    features['scoreChange'] = gameState.data.scoreChange + numCarrying ** .8
 
     distToSafe = self.findHome(myPos, gameState)
     features['distanceToSafe'] = distToSafe
+    lastPos = self.observationHistory[-1].getAgentState(self.index).getPosition()
+    closerToHome = distToSafe < self.findHome(lastPos, gameState)
+    ##closer to home -> better
+    #deltaSafeDist
+    features['risk'] = int(closerToHome) * numCarrying ** .8  #weight as positive --> risk aversion
+    if distToSafe == 0:
+        features['scoreChange'] += numCarrying
+
 
     if not MM_ID or MM_ID != self.index:
         if action == gameState.getAgentState(self.index).configuration.direction:
@@ -376,93 +373,58 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
             features['actionBonus'] += .5
 
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
-    ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None and successor.getAgentState(self.index).isPacman]
-    features['ghostDistance'] = self.ghostsToFeatureScore(ghosts, myPos, action, gameState)
-
-    # Compute distance to the nearest food
-    if len(foodList) > 0: # This should always be True,  but better safe than sorry
-      minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
-      features['distanceToFood'] = minDistance
-    return features
-
-  def ghostsToFeatureScore(self, ghosts, pos, action, gameState):
-      '''
-      Returns a score based on the distance from ghosts and current gameState
-      :param ghosts: an array of enemies who are ghosts
-      :param pos: our position
-      :param gameState: the gamestate
-      :return: a score
-      '''
-      ##assuming tight corridors, avoiding the ghost will be very tough
-      '''
-          .
-        g. p .   g
-
-        g
-
-         .
-        p
-
-
-        g
-         .|
-         p|
-
-      '''
-
-      if len(ghosts) > 0:
-         gtl = [(self.getMazeDistance(pos, a.getPosition()), a) for a in ghosts]
-         if gtl[0][0] > gtl[-1][0]:
-             tmp = gtl[0]
-             gtl[0] = gtl[-1]
-             gtl[-1] = tmp
-
-         #GhostTupleList <- gtl (closest ghost that can hurt us
-         closeGhost =  gtl[0][1]
-         baseScore = min(-4 + gtl[0][0], 0)
-         '''
-             _____
-             x_o._|
-
-         '''
-         oldPos = gameState.getAgentState(self.index).getPosition()
-
-         if self.trapped(pos, closeGhost, gameState):
-            #generally this is a very bad move
-            baseScore -= 50
-            if self.findHome(pos, gameState) < self.findHome(oldPos, gameState):
-                baseScore += 1  #heading home
-            else:
-                # we are running away or stopping which seems futile
-                pass
-         else:
-             if gtl[0][0] == 0:  #check to see if 1) ghost is scared  2) this is best option?
-                 baseScore -= 900
-             elif gtl[0][0] == 1:  #allow enemy to eat -- no!
-                 baseScore -= 100
-             elif gtl[0][0] <= 4:  #Here is the real challenge. Can we recognize our demise
-                 pass
-             else:   #ghost is 5 or more away
-                 return 0
-
-         if gtl[0][1].scaredTimer >= 5:
-             # +.5 to head towards ghost if moving towards him from old pos
-             if gtl[0][0] < self.getMazeDistance(oldPos, closeGhost.getPosition()):
-               baseScore += .5
-
-         return baseScore
-
+    protectors = [a for a in enemies if a.getPosition() != None]
+    if len(protectors) > 0:
+      dists = [(self.getMazeDistance(myPos, a.getPosition()), a) for a in protectors]
+      closestDist, closestGhost = min(dists)
+      if closestGhost.isPacman or closestGhost.scaredTimer >= 5:
+          baseScore = -.5 *closestDist
+          if closestDist == 0:  #check to see if 1) ghost is scared  2) this is best option?
+            baseScore += 100
       else:
-          return 0
+          baseScore = min(-8 + closestDist, 0)
+          #istrapped would have been smooth
+          if closestDist == 0:  #check to see if 1) ghost is scared  2) this is best option?
+                baseScore -= 900
+          elif closestDist == 1:  #allow enemy to eat -- no!
+                baseScore -= 200
+      features['distanceToProtector'] =  baseScore
+
+    if len(foodList) > 0: # This should always be True,  but better safe than sorry
+      bestFood = foodList[0]
+      bestLead = -9999
+      bestScore = -99
+
+      try:
+          sep = self.getMazeDistance(closestGhost.getPosition(), myPos)
+      except: #failure
+          sep = -1
+          closestGhost = (0, gameState.getAgentState(self.index)) # self for comparison
+
+      if self.foodTarget and sep > 10:
+          features['splitDistToFood'] = self.getMazeDistance(myPos, self.foodTarget)
+      else:
+          for food in foodList:
+            myDist = self.getMazeDistance(myPos, food)
+            proDist = self.getMazeDistance(closestGhost.getPosition(), food)
+            if proDist - myDist > bestLead:
+              bestLead = proDist - myDist
+              bestScore = myDist
+              self.foodTarget = food
+
+          features['splitDistToFood'] = bestScore
+
+    print "features at ", features, "with action", action
+    return features
 
 
   def getWeights(self, gameState, action):
     weights = util.Counter()
-    weights['successorScore'] = 100
-    weights['distanceToFood'] = -1
+    weights['foodLeft'] = 100
+    weights['capsulesLeft'] = 500
+    weights['splitDistToFood'] = -1
     weights['actionBonus'] = 1  #will prune stop from choose action
     weights['scoreChange'] = 50
-
     '''
     # pac has eaten one dot and now must choose whether to eat more dots or return home
     # closest dot 3 away
@@ -487,9 +449,10 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
 
     if gameState.getAgentState(self.index).numCarrying > 0:
         weights['distanceToSafe'] = -1  #changing from -1.5 for test
-        weights['ghostDistance'] = 1 # default to feature score for ghostDistance; else keep at 0
+        weights['distanceToProtector'] = 1 # default to feature score for ghostDistance; else keep at 0
+        weights['risk'] = 1
     else:
-        weights['ghostDistance'] = 1 # tried .5 and pac started running into ghosts
+        weights['distanceToProtector'] = 1 # tried .5 and pac started running into ghosts
     return weights
 
 class DefensiveReflexAgent(ReflexCaptureAgent):
@@ -514,10 +477,10 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     if action == Directions.STOP: features['stop'] = 1
     #if myState.isPacman: features['onDefense'] = 0
     if self.red:
-        if myState.isPacman:#myPos[0] > self.safeColumn or myState.isPacman:
+        if myPos[0] > self.safeColumn or myState.isPacman:
             features['onDefense'] = 0
     else:
-        if myState.isPacman: #myPos[0] < self.safeColumn or myState.isPacman:
+        if myPos[0] < self.safeColumn or myState.isPacman:
             features['onDefense'] = 0
 
     # Computes distance to invaders we can see
@@ -562,83 +525,21 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     else:
         rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
         if action == rev: features['reverse'] = 1
-        ourFood = self.getFoodYouAreDefending(gameState).asList()
-        threats = [a for a in enemies if a.getPosition() != None]
-        dists = [(self.getMazeDistance(myPos, a.getPosition()), a.getPosition()) for a in threats]
-        closestThreat = min(dists)
-        closestDist = closestThreat[0]
-        if len(ourFood) > 0: # This should always be True,  but better safe than sorry
-            bestFood = ourFood[0]
-            bestLead = -9999
-            for food in ourFood:
-                myDist = self.getMazeDistance(myPos, food)
-                hisDist = self.getMazeDistance(closestThreat[1], food)
-                sep = self.getMazeDistance(myPos, closestThreat[1])
-                if  myDist - hisDist + sep > bestLead:
-                    bestLead = myDist - hisDist + sep
-                    bestFood = food
-        features['splitDistToFood'] = bestLead
 
-        '''
-        capsules = self.getCapsulesYouAreDefending(gameState)
-        if len(capsules) > 0:
-            dists = [self.getMazeDistance(myPos, c) for c in capsules]
-            features['capsuleDistance'] = min(dists)
-            if action == Directions.STOP: features['stop'] = 0 ##allow squatting
-        '''
+        ourFood = self.getFoodYouAreDefending(gameState).asList()
+        foodDists1 = [(self.getMazeDistance(enemies[0].getPosition(), food), food) for food in ourFood]
+        foodDists2 = [(self.getMazeDistance(enemies[-1].getPosition(), food), food) for food in ourFood]
+
+        fd1 = min(foodDists1)
+        fd2 = min(foodDists2)
+        if fd1 < fd2:
+           closeFood = fd1[1]
+        else:
+           closeFood = fd2[1]
+
+        features['foodDistance'] = self.getMazeDistance(myPos,closeFood)
 
     return features
 
   def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 200, 'invaderDistance': -10, 'splitDistToFood': -1, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}
-
-
-'''
-          BIG QUESTION:
-             If pacman is pinned, should he move towards closest path to home or try a different path?
-
-          case 1a.
-          ___________
-          1_g___p____|  pacman is trapped. pacman should proceed towards safe space
-                        CLOSE EXIT
-
-          case 1b.
-          __
-          1 |_______    pacman has close exit blocked (1), but he can get to exit 2 faster than ghost
-          |_g_p__  |    Risky move to go close if ghost is behaving optimally, however could backtrack if ghost is not pursuing
-           ______| |    FAR EXIT
-          2________|
-
-          case 1c.
-          __
-           1|_______    pacman has close exit blocked (1), and he cannot get to exit 2 faster than ghost
-            g_p__  |    Could go towards ghost and exit, could try to wait it out at the halfway point
-           |_____| |
-          _2_______|    ???
-
-          **Becomes more complex with 2 ghosts**
-
-          case 2a.
-          ___________
-          1_g___p__g_|  pacman is trapped. pacman should proceed towards the exit and die
-                        CLOSE EXIT
-
-          case b.
-          __
-          1 |_______    pacman has close exit blocked (1) by close ghost, he can get to exit 2 faster than close ghost
-          |_g_p__  |    but the far exit is blocked by the far ghost
-           ______|g|    If the far ghost or close ghost is not acting optimally, small chance of escape
-          2________|    Should go towards a non-pursuing ghost or exit, branch point also big factor
-                        *** Also if capsule accessible ***
-                        ** Set a flag for isTrapped **
-                        EXIT
-
-
-          When does pacman decide to face defeat vs attempt run away?
-          1. Pacman should find his closest safe space.  <-- ideally escape route (safe space -> path)
-          2. If the ghost is blocking that escape route (e.g. ghost is closer): find next closest escape route
-          2b. Check if capsule in range
-
-               ?????
-
-'''
+    return {'numInvaders': -1000, 'onDefense': 200, 'invaderDistance': -10, 'foodDistance': -10, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}

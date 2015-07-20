@@ -52,21 +52,23 @@ class ReflexCaptureAgent(CaptureAgent):
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
-    self.debugging = False
+    self.debugging = True
     self.stationaryTolerance = random.randint(6,16)
     self.depth = 6
+    self.foodTarget = None
+    self.lastSplit = 0
 
     "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
     if self.red:
         leftEdge = gameState.data.layout.width / 2
         rightEdge =  gameState.data.layout.width - 2
-        self.safeColumn = leftEdge - 2
-        self.opSafeColumn = leftEdge + 2
+        self.safeColumn = leftEdge - 1
+        self.opSafeColumn = leftEdge
     else:
         leftEdge = 1
         rightEdge = gameState.data.layout.width / 2
-        self.safeColumn = rightEdge + 2
-        self.opSafeColumn = rightEdge - 2
+        self.safeColumn = rightEdge
+        self.opSafeColumn = rightEdge - 1
 
     self.safeSpaces = []
     self.opSafeSpaces = []
@@ -79,6 +81,8 @@ class ReflexCaptureAgent(CaptureAgent):
     if self.debugging:
         print "Coloring my safe column white"
         self.debugDraw([(self.safeColumn, el) for el in xrange(0, gameState.data.layout.height)], [1,1,1], clear=False)
+        print "Coloring opp safe column white"
+        self.debugDraw([(self.opSafeColumn, el) for el in xrange(0, gameState.data.layout.height)], [1,0,0], clear=False)
 
         print "Coloring my safe spaces", self.safeSpaces, "blue"
         self.debugDraw(self.safeSpaces, [0,0,1], clear=False)
@@ -108,7 +112,13 @@ class ReflexCaptureAgent(CaptureAgent):
             return self.evaluate(state, action, minAgentId)
         elif self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) == 0:
             return -99999
-        if FIRST_CALL: actions = [action]
+        if FIRST_CALL:
+            actions = [action]
+            if self.getState() == 'DEFENSE':
+                suc = state.generateSuccessor(self.index, action)
+                suicidal = suc.getAgentState(self.index).isPacman
+                if suicidal:
+                  return -99999
         else: actions = state.getLegalActions(self.index)
 
         try:
@@ -186,6 +196,27 @@ class ReflexCaptureAgent(CaptureAgent):
           bestAction = action
           bestDist = dist
       return bestAction
+
+    #enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
+    #ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None] #and successor.getAgentState(self.index).isPacman]
+    enemyDists = [(self.getMazeDistance(gameState.getAgentPosition(self.index), gameState.getAgentState(i).getPosition()), i) for i in self.getOpponents(gameState)]
+    try:
+        minDistance, minID = min(enemyDists)
+        #minDistance = min([self.getMazeDistance(gameState.getAgentPosition(self.index), g.getPosition()) for g in ghosts])
+    except:  #FAILURE
+        minDistance = 999
+        assert "min distance in choose action failed with", enemyDists
+        minID = None
+
+    if minDistance <= 6:
+        highScore = -9999
+        newAction = actions[0]
+        for action in actions:
+            score = self.maxValues(gameState, action, minID, 0, FIRST_CALL = True)
+            if score > highScore:
+                highScore = score
+                newBestAction = action
+        return newBestAction
 
 
     # You can profile your evaluation time by uncommenting these lines
@@ -290,10 +321,10 @@ class ReflexCaptureAgent(CaptureAgent):
         return False  #should not be called otherwise
 
     closerInvader = invaders[0]
-    '''
+
     if closerInvader.numCarrying == 0:
         return False # just chase him?
-    '''
+
     sep = self.getMazeDistance(pos, closerInvader.getPosition())
     if self.getMazeDistance(pos, invaders[-1].getPosition()) < sep:
          closerInvader = invaders[-1]
@@ -363,7 +394,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
 
     numCarrying = gameState.getAgentState(self.index).numCarrying
     features['numCarrying'] = numCarrying
-    features['scoreChange'] = gameState.data.scoreChange + numCarrying
+    features['scoreChange'] = gameState.data.scoreChange + min(numCarrying, 10)
 
 
     distToSafe = self.findHome(myPos, gameState)
@@ -376,8 +407,41 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
             features['actionBonus'] += .5
 
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
-    ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None and successor.getAgentState(self.index).isPacman]
-    features['ghostDistance'] = self.ghostsToFeatureScore(ghosts, myPos, action, gameState)
+    protectors = [a for a in enemies if not a.isPacman and a.getPosition() != None]
+    if len(protectors) > 0:
+      dists = [(self.getMazeDistance(myPos, a.getPosition()), a.getPosition()) for a in protectors]
+      closestGhost = min(dists)
+      closestDist = closestGhost[0]
+      baseScore = min(-4 + closestDist, 0)
+      if closestDist == 0:  #check to see if 1) ghost is scared  2) this is best option?
+            baseScore -= 900
+      elif closestDist == 1:  #allow enemy to eat -- no!
+            baseScore -= 200
+      features['distanceToProtector'] =  baseScore
+
+    if len(foodList) > 0: # This should always be True,  but better safe than sorry
+      bestFood = foodList[0]
+      bestLead = -9999
+      bestScore = -9999
+      if self.foodTarget in foodList:
+          features['splitDistToFood'] = -self.getMazeDistance(myPos, self.foodTarget)
+      else:
+        for food in foodList:
+          myDist = self.getMazeDistance(myPos, food)
+          proDist = self.getMazeDistance(closestGhost[1], food)
+          sep = self.getMazeDistance(myPos, closestGhost[1])
+          #when we are 12 away from close opponent and closer to him, just focus on food
+
+          '''
+          if proDist > myDist:
+              proDist = myDist + sep
+          #proDist = max(40 - min(myDist,proDist), 0)
+          '''
+          if proDist - myDist > bestLead:
+              bestLead = proDist - myDist
+              bestScore = myDist
+              self.foodTarget = food
+        features['splitDistToFood'] = -bestScore #weight is positive
 
     # Compute distance to the nearest food
     if len(foodList) > 0: # This should always be True,  but better safe than sorry
@@ -394,21 +458,6 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
       :return: a score
       '''
       ##assuming tight corridors, avoiding the ghost will be very tough
-      '''
-          .
-        g. p .   g
-
-        g
-
-         .
-        p
-
-
-        g
-         .|
-         p|
-
-      '''
 
       if len(ghosts) > 0:
          gtl = [(self.getMazeDistance(pos, a.getPosition()), a) for a in ghosts]
@@ -459,7 +508,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
   def getWeights(self, gameState, action):
     weights = util.Counter()
     weights['successorScore'] = 100
-    weights['distanceToFood'] = -1
+    weights['splitDistToFood'] = 1
     weights['actionBonus'] = 1  #will prune stop from choose action
     weights['scoreChange'] = 50
 
@@ -486,11 +535,22 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     '''
 
     if gameState.getAgentState(self.index).numCarrying > 0:
-        weights['distanceToSafe'] = -1  #changing from -1.5 for test
-        weights['ghostDistance'] = 1 # default to feature score for ghostDistance; else keep at 0
+        weights['distanceToSafe'] = -1 * gameState.getAgentState(self.index).numCarrying  #changing from -1.5 for test
+        weights['distanceToProtector'] = 1 # default to feature score for ghostDistance; else keep at 0
     else:
-        weights['ghostDistance'] = 1 # tried .5 and pac started running into ghosts
+        weights['distanceToProtector'] = 1 # tried .5 and pac started running into ghosts
     return weights
+
+class DefensiveReflexAgent(ReflexCaptureAgent):
+  """
+  A reflex agent that keeps its side Pacman-free. Again,
+  this is to give you an idea of what a defensive agent
+  could be like.  It is not the best or only way to make
+  such an agent.
+  """
+  def getState(self):
+      return 'DEFENSE'
+
 
 class DefensiveReflexAgent(ReflexCaptureAgent):
   """
@@ -514,10 +574,10 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     if action == Directions.STOP: features['stop'] = 1
     #if myState.isPacman: features['onDefense'] = 0
     if self.red:
-        if myState.isPacman:#myPos[0] > self.safeColumn or myState.isPacman:
+        if myPos[0] > self.safeColumn or myState.isPacman:
             features['onDefense'] = 0
     else:
-        if myState.isPacman: #myPos[0] < self.safeColumn or myState.isPacman:
+        if myPos[0] < self.safeColumn or myState.isPacman:
             features['onDefense'] = 0
 
     # Computes distance to invaders we can see
@@ -573,6 +633,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
             for food in ourFood:
                 myDist = self.getMazeDistance(myPos, food)
                 hisDist = self.getMazeDistance(closestThreat[1], food)
+                hisDist = max(6, hisDist)
                 sep = self.getMazeDistance(myPos, closestThreat[1])
                 if  myDist - hisDist + sep > bestLead:
                     bestLead = myDist - hisDist + sep
@@ -590,8 +651,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     return features
 
   def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 200, 'invaderDistance': -10, 'splitDistToFood': -1, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}
-
+    return {'numInvaders': -1000, 'onDefense': 10000, 'invaderDistance': -10, 'splitDistToFood': -1, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}
 
 '''
           BIG QUESTION:

@@ -60,13 +60,13 @@ class ReflexCaptureAgent(CaptureAgent):
     if self.red:
         leftEdge = gameState.data.layout.width / 2
         rightEdge =  gameState.data.layout.width - 2
-        self.safeColumn = leftEdge - 2
-        self.opSafeColumn = leftEdge + 2
+        self.safeColumn = leftEdge - 1
+        self.opSafeColumn = leftEdge
     else:
         leftEdge = 1
         rightEdge = gameState.data.layout.width / 2
-        self.safeColumn = rightEdge + 2
-        self.opSafeColumn = rightEdge - 2
+        self.safeColumn = rightEdge
+        self.opSafeColumn = rightEdge - 1
 
     self.safeSpaces = []
     self.opSafeSpaces = []
@@ -203,6 +203,8 @@ class ReflexCaptureAgent(CaptureAgent):
         exit ___p___.   possible scenario
 
         '''
+    if gameState.getAgentState(self.index).numCarrying > 0:
+        pass
     if len(bestActions) > 1:
         newBestAction = bestActions[0]
         dist = 9999
@@ -363,11 +365,13 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
 
     numCarrying = gameState.getAgentState(self.index).numCarrying
     features['numCarrying'] = numCarrying
-    features['scoreChange'] = gameState.data.scoreChange + numCarrying
+    features['scoreChange'] = gameState.data.scoreChange + numCarrying ** .8
 
 
     distToSafe = self.findHome(myPos, gameState)
     features['distanceToSafe'] = distToSafe
+    if distToSafe == 0:
+        features['scoreChange'] += numCarrying
 
     if not MM_ID or MM_ID != self.index:
         if action == gameState.getAgentState(self.index).configuration.direction:
@@ -400,9 +404,11 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
       features['splitDistToFood'] = bestLead
 
     # Compute distance to the nearest food
+    '''
     if len(foodList) > 0: # This should always be True,  but better safe than sorry
       minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
       features['distanceToFood'] = minDistance
+    '''
     return features
 
   def ghostsToFeatureScore(self, ghosts, pos, action, gameState):
