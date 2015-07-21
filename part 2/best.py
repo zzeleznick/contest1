@@ -17,6 +17,7 @@ import random, time, util, sys
 from game import Directions
 import game
 from util import nearestPoint
+from capture import AgentRules
 
 #################
 # Team creation #
@@ -55,6 +56,8 @@ class ReflexCaptureAgent(CaptureAgent):
     self.debugging = False
     self.stationaryTolerance = random.randint(6,16)
     self.depth = 6
+    self.bestFood = None
+    self.bestFoodDist = 0
 
     "G A M E  K E Y  L O C A T I O N S  D E T E R M I N A T I O N"
     if self.red:
@@ -106,15 +109,9 @@ class ReflexCaptureAgent(CaptureAgent):
         if depth > self.depth:
         #if state.isWin() or state.isLose() or depth > self.depth:
             return self.evaluate(state, action, minAgentId)
-        elif self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) == 0:
-            return -99999
         if FIRST_CALL: actions = [action]
         else: actions = state.getLegalActions(self.index)
-
-        try:
-            nextActionStatePairs = [ (state.generateSuccessor(self.index, a), a) for a in actions]
-        except:
-            pass
+        nextActionStatePairs = [ (state.generateSuccessor(self.index, a), a) for a in actions]
         #I suppose generate successor really does udate the gameboard...
         return max( [ self.minValues(s[0], s[1], minAgentId, depth + 1) for s in nextActionStatePairs] )
 
@@ -122,30 +119,19 @@ class ReflexCaptureAgent(CaptureAgent):
   def minValues(self, state, action, minAgentId, depth):
         if depth > self.depth:
         #if state.isWin() or state.isLose() or depth > self.depth:
-            return self.evaluate(state, action)
-        elif self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) == 0:
-            return -99999
+            return self.evaluate(state, action, 7)  #since False == 0
 
-        '''
-        if self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) > 5:
-            actions = [ random.choice(state.getLegalActions(minAgentId)) ]
-        else: actions = state.getLegalActions(minAgentId)
-        try:
-            nextActionStatePairs = [ (state.generateSuccessor(minAgentId, a), a) for a in actions]
-        except:
-            pass
-
-        '''
         goodPos = state.getAgentPosition(self.index)
+
         if self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) > 10:
             actions = [ random.choice(state.getLegalActions(minAgentId)) ]
-        else: actions = state.getLegalActions(minAgentId)
+
+        else:
+            actions = state.getLegalActions(minAgentId)
+
         nextActionStatePairs = []
-        for a in actions:
-            try:
-                nextActionStatePairs += [ (state.generateSuccessor(minAgentId, a), a) ]
-            except:
-                pass #safety hopefully?
+        nextActionStatePairs += [ (state.generateSuccessor(minAgentId, a), a) for a in actions]
+
         distancesToMe = [ (self.getMazeDistance(goodPos, ns[0].getAgentPosition(minAgentId)), ns) for ns in nextActionStatePairs]
         minDist = min(distancesToMe)[0]
         return min( [ self.maxValues(s[1][0], s[1][1], minAgentId, depth + 1) for s in distancesToMe if s[0] == minDist] )
@@ -156,8 +142,10 @@ class ReflexCaptureAgent(CaptureAgent):
     Picks among the actions with the highest Q(s,a).
     """
     actions = gameState.getLegalActions(self.index)
-    foodLeft = len(self.getFood(gameState).asList())
-    if foodLeft <= 2:
+    foodLeft = self.getFood(gameState).asList()
+    pos = gameState.getAgentState(self.index).getPosition()
+
+    if len(foodLeft) <= 2:
       bestDist = 9999
       for action in actions:
         successor = self.getSuccessor(gameState, action)  #returns a configuration (direction, position
@@ -165,7 +153,7 @@ class ReflexCaptureAgent(CaptureAgent):
         dist = self.findHome(pos2, gameState)
         if pos2 == self.start:
             dist += 900 #don't get killed!
-            #print "I am would have killed myself with action", action, "from position", gameState.getAgentPosition(self.index)
+            print "I am would have killed myself with action", action, "from position", gameState.getAgentPosition(self.index)
         enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
         ghosts = [a for a in enemies if not a.isPacman and a.getPosition() != None] #and successor.getAgentState(self.index).isPacman]
         try:
@@ -181,13 +169,26 @@ class ReflexCaptureAgent(CaptureAgent):
         '''
         if minDistance <= 1:
             dist += 100 #don't get killed!
-            #print "I am at risk to kill myself with action", action, "from position", gameState.getAgentPosition(self.index)
+            print "I am at risk to kill myself with action", action, "from position", gameState.getAgentPosition(self.index)
         if dist < bestDist:
           bestAction = action
           bestDist = dist
       return bestAction
 
-
+    '''
+    if self.getState() == 'OFFENSE' and self.bestFood not in foodLeft:
+        enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
+        protectors = [a for a in enemies if a.getPosition() != None and not a.isPacman]
+        if len(protectors) > 0:
+            dists = [(self.getMazeDistance(pos, a.getPosition()), a) for a in protectors]
+            closestDist, closestGhost = min(dists)
+            bestLead = -9999
+            for food in foodLeft:
+               myDist = self.getMazeDistance(pos, food)
+               proDist = self.getMazeDistance(closestGhost.getPosition(), food)
+               if proDist - myDist > bestLead:
+                  self.bestFood = food
+    '''
     # You can profile your evaluation time by uncommenting these lines
     # start = time.time()
     values = [self.evaluate(gameState, a) for a in actions]
@@ -203,7 +204,7 @@ class ReflexCaptureAgent(CaptureAgent):
         exit ___p___.   possible scenario
 
         '''
-    #if self.getState() == 'OFFENSE': print "BEST ACTIONS ", bestActions
+    if self.getState() == 'OFFENSE': print "BEST ACTIONS ", bestActions
     if len(bestActions) > 1:
         newBestAction = bestActions[0]
         dist = 9999
@@ -229,7 +230,15 @@ class ReflexCaptureAgent(CaptureAgent):
                 lastPos = gameState.getAgentPosition(self.index)
                 preDistToSafe = self.findHome(lastPos,gameState)
                 if distToSafe <  preDistToSafe and nextConfig.getAgentState(self.index).numCarrying > 0:
-                    newBestAction = option
+                    newBestAction = option  #head home
+                elif len(foodLeft) > 0: # This should always be True,  but better safe than sorry
+                    towardsFood = False
+                    for food in foodLeft:
+                        if self.getMazeDistance(nextPos, food) < self.getMazeDistance(lastPos, food):
+                            towardsFood = True
+                            newBestAction = option
+                            print "Heading towards Food on Tie with action", option
+                            break
                 '''
                 if score > bestScore:
                     bestScore = score
@@ -243,7 +252,7 @@ class ReflexCaptureAgent(CaptureAgent):
                         dist = minDistance
                         newBestAction = action
                 '''
-        #if self.getState() == 'OFFENSE': print "Chose ", newBestAction, "\n"
+        if self.getState() == 'OFFENSE': print "Chose ", newBestAction, "\n"
         return newBestAction
 
     if len(bestActions) == 1:
@@ -285,11 +294,15 @@ class ReflexCaptureAgent(CaptureAgent):
                        bestAction = actions[i]
                        break
 
-              #if self.getState() == 'OFFENSE': print "Chose ", bestAction, "\n"
+              if self.getState() == 'OFFENSE': print "Chose ", bestAction, "\n"
               return bestAction
 
     res = random.choice(bestActions)
-    #if self.getState() == 'OFFENSE': print "Randomly Chose ", res, "\n"
+    if self.getState() == 'OFFENSE':
+        if len(bestActions) > 1:
+            print "Randomly Chose ", res, "\n"
+        else:
+            print "Chose ", res, "\n"
     return res
 
   def getSuccessor(self, gameState, action):
@@ -304,6 +317,12 @@ class ReflexCaptureAgent(CaptureAgent):
     else:
       return successor
 
+  def checkDeath(self, agentState):  ##this needs to be fixed
+      if agentState.configuration == agentState.start:
+          return True
+      else:
+          return False
+
   def evaluate(self, gameState, action, MM_ID = False):  #MM_ID if passed from mini-max
     """
     Computes a linear combination of features and feature weights
@@ -312,7 +331,7 @@ class ReflexCaptureAgent(CaptureAgent):
     features = self.getFeatures(gameState, action, MM_ID)
     weights = self.getWeights(gameState, action)
     res = features * weights
-    #if self.getState() == 'OFFENSE': print "Result", res
+    if self.getState() == 'OFFENSE': print "Result", res
     return res
 
   def trappedOpponent(self, pos, invaders, gameState):
@@ -388,17 +407,16 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         #successor = gameState.generateSuccessor(EID, action)
         # #gamestate already updated from minimax
         successor = gameState
-    else:
-        try:
-             successor = self.getSuccessor(gameState, action)
-        except:
-             successor = gameState  #passed from minValues
+
+    else: successor = gameState.generateSuccessor(self.index, action)
+          #self.getSuccessor(gameState, action)
 
 
     foodList = self.getFood(successor).asList()
     features['foodLeft'] = -len(foodList)#self.getScore(successor)
     myPos = successor.getAgentState(self.index).getPosition()
-    lastPos = self.getCurrentObservation().getAgentState(self.index).getPosition()
+    lastGame = self.getCurrentObservation()
+    lastPos = lastGame.getAgentState(self.index).getPosition()
 
     capsules = self.getCapsules(successor)
     features['capsuleBonus'] = 1000 - 500 * len(capsules)
@@ -410,9 +428,9 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         if curCapDist <= 6:
             features['capsuleBonus'] +=(6 - curCapDist) * capsuleProgress
 
-    numCarrying = gameState.getAgentState(self.index).numCarrying
+    numCarrying = successor.getAgentState(self.index).numCarrying
     features['numCarrying'] = numCarrying
-    features['scoreChange'] = gameState.data.scoreChange + numCarrying ** .8
+    features['scoreChange'] = abs(successor.data.scoreChange) + numCarrying ** .8
 
 
     distToSafe = self.findHome(myPos, gameState)  #note gamestate not used in function
@@ -420,41 +438,62 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     if distToSafe == 0 and not myPos == self.start:
         features['scoreChange'] += numCarrying
 
+    oppID = self.getOpponents(successor)
+    opp1Dead = self.checkDeath(successor.getAgentState(oppID[0]))
+    opp2Dead =  self.checkDeath(successor.getAgentState(oppID[1]))
+    dead = self.checkDeath(successor.getAgentState(self.index)) # essentially are we back at start position... :(
+
+    if dead:
+        print "i'm dead in this successor!"  #either through ghost or pacman
+        features['death'] = -1000
+
+    elif opp1Dead or opp2Dead:
+         print "cool my opponent is dead in this successor!"
+         features['death'] = 500
 
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
     protectors = [a for a in enemies if a.getPosition() != None]
     if len(protectors) > 0:
       dists = [(self.getMazeDistance(myPos, a.getPosition()), a) for a in protectors]
       closestDist, closestGhost = min(dists)
-      if closestGhost.isPacman or closestGhost.scaredTimer >= 5:
-          baseScore = -.5*closestDist
-          if successor.getAgentState(self.index).scaredTimer >= 1 and \
-                  (closestDist <=1 or myPos == self.start):
-            print "i'm scared!"
-            baseScore -= 100
-          elif closestDist == 0 or closestGhost.getPosition() == closestGhost.start.getPosition():  #check to see if 1) ghost is scared  2) this is best option?
-            baseScore += 100  #TODO: CHECK IF THIS IMPLIES ghost eaten
-      else:
+      farDist, farGhost = max(dists)
+      preActionState = self.getCurrentObservation()
+      if successor.getAgentState(self.index).scaredTimer >= 1:
+          if closestDist <=1 and closestGhost.isPacman: #not dead immediately, but after move
+             print "i'm scared! and he would be one away after my move!"
+             features['death'] = -500
+
+      if closestGhost.isPacman:
+          closestGhost = farGhost
+          closestDist = farDist
+
+      if not closestGhost.isPacman:
           baseScore = min(-8 + closestDist, 0)
           #istrapped would have been smooth
-          if closestDist == 0:  #check to see if 1) ghost is scared  2) this is best option?
-                baseScore -= 900
-          elif closestDist == 1:  #allow enemy to eat -- no!
-                baseScore -= 200
-      features['distanceToProtector'] =  baseScore
+          if closestDist == 1:  #allow enemy to eat -- no!
+                if closestGhost.scaredTimer >= 1:
+                    print "my opponent is close to dead in this successor!"
+                else:
+                    print "i would be dead in this move towards opponent"
+                    features['death'] = -500
 
+          if closestDist <= 4 and len(successor.getLegalActions(self.index)) <= 2: #one direction and stop
+                features['trapped'] = -300
+                if len(gameState.getLegalActions(self.index)) >= 4 and closestDist > 3: #junction with 3 paths and stop
+                    features['trapped'] = 0
 
-    if len(foodList) > 0: # This should always be True,  but better safe than sorry
+          features['distanceToProtector'] =  baseScore
+
+    flag = len(foodList) > 0
+
+    if flag: # This should always be True,  but better safe than sorry
       bestFood = foodList[0]
       bestLead = -9999
       distToFood = 9999
       preSafeDist = self.findHome(lastPos, gameState)
       for food in foodList:
           myDist = self.getMazeDistance(myPos, food)
-          '''
-          if myDist < self.getMazeDistance(lastPos, food):
-              features['actionBonus'] += float(1)/len(foodList)
-          '''
+
           proDist = self.getMazeDistance(closestGhost.getPosition(), food)
           if closestGhost.isPacman: proDist = 0
           if proDist - myDist > bestLead:
@@ -472,10 +511,9 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                         features['actionBonus'] += 1
                         if capsuleProgress: features['capsuleBonus'] += 1
 
-
       features['splitDistToFood'] = -foodDist
 
-    if not MM_ID or MM_ID != self.index:
+    if not MM_ID or MM_ID == 7:  #successor state is same as gamestate
         if action == gameState.getAgentState(self.index).configuration.direction:
             if numCarrying == 0 and not foodProgress:
                 pass # no bonus for reverse
@@ -483,18 +521,10 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                 features['actionBonus'] += .5 #ugly encouragment for same direction
             #can encourage him to keep backing up away from food
 
-        if action != Directions.STOP:
-            features['actionBonus'] += .5
-        if len(successor.getLegalActions(self.index)) == 2:  #TODO FIX WEIGHT FOR TRAPPING
-            features['actionBonus'] -= .5
+        if action == Directions.STOP:
+            features['actionBonus'] -= 50
 
-    # Compute distance to the nearest food
-    '''
-    if len(foodList) > 0: # This should always be True,  but better safe than sorry
-      minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
-      features['distanceToFood'] = minDistance
-    '''
-    #if self.getState() == "OFFENSE": print features, action
+    if self.getState() == "OFFENSE": print features, action
     return features
 
 
@@ -505,6 +535,8 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     weights['actionBonus'] = 1  #will prune stop from choose action
     weights['scoreChange'] = 50
     weights['capsuleBonus'] = 1
+    weights['trapped'] = 1
+    weights['death'] = 1 #assigned in features
 
     if gameState.getAgentState(self.index).numCarrying > 0:
         weights['distanceToSafe'] = -1  #changing from -1.5 for test
@@ -546,14 +578,32 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
     features['numInvaders'] = len(invaders)
 
+    enemyPos = [en.getPosition() for en in enemies if en.getPosition() != None]
+    enemyDists = [self.getMazeDistance(myPos, opp) for opp in enemyPos]
+
+    nearby = min(enemyDists)
+
+    oppID = self.getOpponents(successor)
+    opp1Dead = self.checkDeath(successor.getAgentState(oppID[0]))
+    opp2Dead =  self.checkDeath(successor.getAgentState(oppID[1]))
+    dead = self.checkDeath(successor.getAgentState(self.index)) # essentially are we back at start position... :(
+
+    if dead:
+        print "ME (DEFENSE) Considered ACTIVE suicide by going", action
+        features['death'] = -1000
+
+    elif nearby == 1:
+        features['death'] = -800
+
     if len(invaders) > 0:
       dists = [self.getMazeDistance(myPos, a.getPosition()) for a in invaders]
       minDist = min(dists)
       features['invaderDistance'] = minDist
-      if gameState.getAgentState(self.index).scaredTimer >= 1 and minDist == 0:
-          features['invaderDistance'] = 5 # really bad
-          print "ME (DEFENSE) Scared"
-          ## block other capsule? or just run away?
+      if successor.getAgentState(self.index).scaredTimer >= 1:
+          print "I AM SCARED, SAYS defense"
+          if minDist == 1:
+            features['death'] = -500 # really bad
+            print "ME (DEFENSE) Considered PASSIVE suicide by going", action
 
       ### Can I detect if I've trapped my opponent?
       if self.trappedOpponent(myPos, invaders, gameState):
@@ -578,4 +628,4 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     return features
 
   def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 900, 'invaderDistance': -10, 'foodDistance': -10, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}
+    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'foodDistance': -10, 'death': 1, 'capsuleDistance': -10, 'stop': -100, 'reverse': -2}
