@@ -14,7 +14,7 @@
 from captureAgents import CaptureAgent
 import distanceCalculator
 import random, time, util, sys
-from game import Directions
+from game import Directions, Actions
 import game
 from util import nearestPoint
 from capture import AgentRules
@@ -122,15 +122,27 @@ class ReflexCaptureAgent(CaptureAgent):
             return self.evaluate(state, action, 7)  #since False == 0
 
         goodPos = state.getAgentPosition(self.index)
-
-        if self.getMazeDistance(state.getAgentPosition(self.index), state.getAgentPosition(minAgentId)) > 10:
-            actions = [ random.choice(state.getLegalActions(minAgentId)) ]
+        opPos = state.getAgentPosition(minAgentId)
+        sep = self.getMazeDistance(goodPos, opPos )
+        if sep > 10:
+            bestActions = [ random.choice(state.getLegalActions(minAgentId)) ]
 
         else:
             actions = state.getLegalActions(minAgentId)
+            dist = 999
+            bestActions = []
+            for option in actions:
+                nextGame = state.generateSuccessor(minAgentId, option)
+                nextOpPos = nextGame.getAgentPosition(minAgentId)
+                resgoodPos = nextGame.getAgentPosition(minAgentId)
+                if self.getMazeDistance(goodPos, nextOpPos) < sep or resgoodPos == self.start:
+                    bestActions += [option]
+
+        if len(bestActions) == 0: #ooponent can only move away or die
+            bestActions = [ random.choice(state.getLegalActions(minAgentId)) ]
 
         nextActionStatePairs = []
-        nextActionStatePairs += [ (state.generateSuccessor(minAgentId, a), a) for a in actions]
+        nextActionStatePairs += [ (state.generateSuccessor(minAgentId, a), a) for a in bestActions]
 
         distancesToMe = [ (self.getMazeDistance(goodPos, ns[0].getAgentPosition(minAgentId)), ns) for ns in nextActionStatePairs]
         minDist = min(distancesToMe)[0]
@@ -169,8 +181,23 @@ class ReflexCaptureAgent(CaptureAgent):
         if dist < bestDist:
           bestAction = action
           bestDist = dist
+
       return bestAction
 
+    if self.getState() == 'OFFENSE':
+        bestScore = -9999
+        bestAction = actions[0]
+        pos = gameState.getAgentPosition(self.index)
+        enemyDists = [(self.getMazeDistance(pos, gameState.getAgentState(i).getPosition()), i) for i in self.getOpponents(gameState)]
+        minDist, minAgentId = min(enemyDists)
+        if minDist <= 4:
+            for action in actions:
+                score = self.maxValues(gameState, action, minAgentId, 0, FIRST_CALL = True)
+                if score > bestScore:
+                    bestScore = score
+                    bestAction = action
+
+            return bestAction
     # You can profile your evaluation time by uncommenting these lines
     # start = time.time()
     values = [self.evaluate(gameState, a) for a in actions]
